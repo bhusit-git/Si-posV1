@@ -1,0 +1,494 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-noto-thai);
+  --font-mono: var(--font-noto-thai);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+}
+
+:root {
+  --font-noto-thai: "Noto Sans Thai", "Noto Sans", system-ui, sans-serif;
+  --radius: 0.625rem;
+  --background: #ffffff;
+  --background: oklch(1 0 0);
+  --foreground: #1f2937;
+  --foreground: oklch(0.145 0 0);
+  --card: #ffffff;
+  --card: oklch(1 0 0);
+  --card-foreground: #1f2937;
+  --card-foreground: oklch(0.145 0 0);
+  --popover: #ffffff;
+  --popover: oklch(1 0 0);
+  --popover-foreground: #1f2937;
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: #1f2937;
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: #f8fafc;
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: #f5f5f5;
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: #1f2937;
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: #f5f5f5;
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: #6b7280;
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: #f5f5f5;
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: #1f2937;
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: #dc2626;
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: #e5e7eb;
+  --border: oklch(0.922 0 0);
+  --input: #e5e7eb;
+  --input: oklch(0.922 0 0);
+  --ring: #94a3b8;
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: #171717;
+  --background: oklch(0.145 0 0);
+  --foreground: #fafafa;
+  --foreground: oklch(0.985 0 0);
+  --card: #262626;
+  --card: oklch(0.205 0 0);
+  --card-foreground: #fafafa;
+  --card-foreground: oklch(0.985 0 0);
+  --popover: #262626;
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: #fafafa;
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: #e5e7eb;
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: #262626;
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: #3f3f46;
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: #fafafa;
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: #3f3f46;
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: #a1a1aa;
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: #3f3f46;
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: #fafafa;
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: #f87171;
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: rgba(255, 255, 255, 0.1);
+  --border: oklch(1 0 0 / 10%);
+  --input: rgba(255, 255, 255, 0.15);
+  --input: oklch(1 0 0 / 15%);
+  --ring: #71717a;
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Keep popup surfaces opaque on browsers that miss newer color syntax. */
+[data-slot="dialog-content"],
+[data-slot="popover-content"],
+[data-slot="select-content"],
+[data-slot="command"] {
+  background-color: #ffffff;
+  background-color: var(--popover);
+  border-color: #d1d5db;
+  border-color: var(--border);
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+}
+
+[data-slot="dialog-content"] {
+  background-color: #ffffff;
+  background-color: var(--background);
+}
+
+.dark [data-slot="dialog-content"],
+.dark [data-slot="popover-content"],
+.dark [data-slot="select-content"],
+.dark [data-slot="command"] {
+  background-color: #262626;
+  background-color: var(--popover);
+  border-color: rgba(255, 255, 255, 0.12);
+  border-color: var(--border);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
+}
+
+.dark [data-slot="dialog-content"] {
+  background-color: #262626;
+  background-color: var(--background);
+}
+
+body[data-dashboard-ui-scale="compact"] {
+  --dashboard-page-title-size: 1.35rem;
+  --dashboard-page-subtitle-size: 0.88rem;
+  --dashboard-section-title-size: 1rem;
+  --dashboard-body-size: 0.93rem;
+  --dashboard-label-size: 0.8rem;
+  --dashboard-summary-value-size: 1.12rem;
+  --dashboard-table-size: 0.85rem;
+  --dashboard-table-px: 0.4rem;
+  --dashboard-table-py: 0.42rem;
+  --dashboard-dialog-title-size: 1.08rem;
+}
+
+body[data-dashboard-ui-scale="normal"] {
+  --dashboard-page-title-size: 1.72rem;
+  --dashboard-page-subtitle-size: 0.98rem;
+  --dashboard-section-title-size: 1.12rem;
+  --dashboard-body-size: 1rem;
+  --dashboard-label-size: 0.88rem;
+  --dashboard-summary-value-size: 1.3rem;
+  --dashboard-table-size: 0.98rem;
+  --dashboard-table-px: 0.5rem;
+  --dashboard-table-py: 0.5rem;
+  --dashboard-dialog-title-size: 1.2rem;
+}
+
+body[data-dashboard-ui-scale="large"] {
+  --dashboard-page-title-size: 1.95rem;
+  --dashboard-page-subtitle-size: 1.08rem;
+  --dashboard-section-title-size: 1.2rem;
+  --dashboard-body-size: 1.08rem;
+  --dashboard-label-size: 0.95rem;
+  --dashboard-summary-value-size: 1.45rem;
+  --dashboard-table-size: 1.05rem;
+  --dashboard-table-px: 0.58rem;
+  --dashboard-table-py: 0.56rem;
+  --dashboard-dialog-title-size: 1.28rem;
+}
+
+@media (max-width: 768px) {
+  body[data-dashboard-ui-scale="compact"] {
+    --dashboard-page-title-size: 1.25rem;
+    --dashboard-page-subtitle-size: 0.85rem;
+    --dashboard-summary-value-size: 1.08rem;
+    --dashboard-table-size: 0.82rem;
+  }
+
+  body[data-dashboard-ui-scale="large"] {
+    --dashboard-page-title-size: 1.62rem;
+    --dashboard-page-subtitle-size: 1rem;
+    --dashboard-summary-value-size: 1.28rem;
+    --dashboard-table-size: 0.96rem;
+  }
+}
+
+body[data-dashboard-ui-scale] .ui-scale-page-title {
+  font-size: var(--dashboard-page-title-size);
+  line-height: 1.15;
+}
+
+body[data-dashboard-ui-scale] .ui-scale-page-subtitle {
+  font-size: var(--dashboard-page-subtitle-size);
+  line-height: 1.35;
+}
+
+body[data-dashboard-ui-scale] .ui-scale-section-title {
+  font-size: var(--dashboard-section-title-size);
+  line-height: 1.25;
+}
+
+body[data-dashboard-ui-scale] .ui-scale-body {
+  font-size: var(--dashboard-body-size);
+  line-height: 1.45;
+}
+
+body[data-dashboard-ui-scale] .ui-scale-label {
+  font-size: var(--dashboard-label-size);
+  line-height: 1.35;
+}
+
+body[data-dashboard-ui-scale] .ui-scale-summary-label {
+  font-size: var(--dashboard-label-size);
+  line-height: 1.3;
+}
+
+body[data-dashboard-ui-scale] .ui-scale-summary-value {
+  font-size: var(--dashboard-summary-value-size);
+  line-height: 1.15;
+}
+
+body[data-dashboard-ui-scale] .ui-scale-dense-table {
+  font-size: var(--dashboard-table-size);
+}
+
+body[data-dashboard-ui-scale] .ui-scale-dense-table [data-slot="table-head"],
+body[data-dashboard-ui-scale] .ui-scale-dense-table [data-slot="table-cell"] {
+  font-size: inherit;
+  padding-inline: var(--dashboard-table-px);
+  padding-block: var(--dashboard-table-py);
+  white-space: nowrap;
+}
+
+body[data-dashboard-ui-scale] .ui-scale-bill-table {
+  font-size: var(--dashboard-table-size);
+}
+
+body[data-dashboard-ui-scale] .ui-scale-bill-table th,
+body[data-dashboard-ui-scale] .ui-scale-bill-table td {
+  font-size: inherit;
+}
+
+body[data-dashboard-ui-scale="large"] .ui-scale-bill-table th,
+body[data-dashboard-ui-scale="large"] .ui-scale-bill-table td {
+  padding-top: 0.56rem;
+  padding-bottom: 0.56rem;
+}
+
+body[data-dashboard-ui-scale] [data-slot="dialog-content"] {
+  font-size: var(--dashboard-body-size);
+}
+
+body[data-dashboard-ui-scale] [data-slot="dialog-title"] {
+  font-size: var(--dashboard-dialog-title-size);
+}
+
+/* ==================== Mobile / Touch Optimizations ==================== */
+
+/* Remove tap highlight on mobile browsers for cleaner interaction */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Disable double-tap zoom on interactive elements for faster response */
+button,
+a,
+input,
+select,
+textarea,
+[role="button"],
+[role="tab"],
+[role="menuitem"],
+[role="option"] {
+  touch-action: manipulation;
+}
+
+/* Ensure minimum touch target size on touch devices */
+@media (pointer: coarse) {
+  button:not([class*="h-"]),
+  a[role="button"]:not([class*="h-"]),
+  [role="tab"]:not([class*="h-"]) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Slightly larger tap targets for table rows on touch */
+  td {
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+
+  /* Better spacing for input elements on touch */
+  input[type="text"],
+  input[type="number"],
+  input[type="date"],
+  input[type="time"],
+  input[type="password"],
+  input[type="search"],
+  select {
+    min-height: 44px;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+}
+
+/* Print styles for reports */
+@media print {
+  /* Hide non-printable elements */
+  .print\:hidden,
+  aside,
+  nav,
+  button,
+  [data-radix-popper-content-wrapper],
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+
+  /* Remove main content left margin (sidebar offset) */
+  main,
+  .ml-64 {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Make cards print nicely */
+  .rounded-lg,
+  .rounded-xl {
+    border-radius: 0 !important;
+  }
+
+  .shadow,
+  .shadow-sm,
+  .shadow-md {
+    box-shadow: none !important;
+  }
+
+  .border {
+    border: 1px solid #ddd !important;
+  }
+
+  /* Page layout */
+  body {
+    font-size: 11px !important;
+    color: #000 !important;
+    background: #fff !important;
+  }
+
+  /* Print header */
+  h1 {
+    font-size: 18px !important;
+    margin-bottom: 4px !important;
+  }
+
+  /* Table styles for print */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 10px !important;
+  }
+
+  th,
+  td {
+    padding: 4px 6px !important;
+    border-bottom: 1px solid #ddd !important;
+  }
+
+  th {
+    background-color: #f5f5f5 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Repeat table headers on each printed page */
+  thead {
+    display: table-header-group;
+  }
+
+  /* Repeat table footers on each printed page */
+  tfoot {
+    display: table-footer-group;
+  }
+
+  /* Ensure tables don't break across pages */
+  tr {
+    page-break-inside: avoid;
+  }
+
+  /* Better page break control */
+  h1, h2, h3, h4 {
+    page-break-after: avoid;
+  }
+
+  .page-break-before {
+    page-break-before: always;
+  }
+
+  .page-break-after {
+    page-break-after: always;
+  }
+
+  .page-break-after:last-child {
+    page-break-after: auto;
+  }
+
+  .avoid-break {
+    page-break-inside: avoid;
+  }
+
+  /* Page margins and default size */
+  @page {
+    margin: 15mm 10mm;
+    size: A4;
+  }
+
+  /* Landscape mode for wide tables (price breakdown, product report) */
+  .print-landscape {
+    size: A4 landscape;
+  }
+
+  /* Page numbers via CSS counters */
+  body {
+    counter-reset: page;
+  }
+
+  .print-page-number::after {
+    content: counter(page);
+    counter-increment: page;
+  }
+}

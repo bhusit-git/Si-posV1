@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>SuperIce Group — BI Report 2024-2026</title>
+<style>
+  @page { size: A4 landscape; margin: 12mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Helvetica Neue', 'Sarabun', Arial, sans-serif; font-size: 10px; color: #1e293b; line-height: 1.45; background: #fff; }
+  .page { page-break-after: always; padding: 8px 0; }
+  .page:last-child { page-break-after: avoid; }
+  h1 { font-size: 22px; color: #0f172a; border-bottom: 3px solid #2563eb; padding-bottom: 6px; margin-bottom: 12px; }
+  h2 { font-size: 15px; color: #1e40af; margin: 16px 0 8px 0; border-left: 4px solid #2563eb; padding-left: 8px; }
+  h3 { font-size: 12px; color: #334155; margin: 10px 0 4px 0; }
+  .subtitle { font-size: 11px; color: #64748b; margin-bottom: 8px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; }
+  .card-header { font-size: 12px; font-weight: 700; color: #1e40af; margin-bottom: 6px; }
+  .kpi-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .kpi { flex: 1; min-width: 120px; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; text-align: center; }
+  .kpi .val { font-size: 18px; font-weight: 700; color: #0f172a; }
+  .kpi .lbl { font-size: 9px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi.green .val { color: #16a34a; }
+  .kpi.red .val { color: #dc2626; }
+  .kpi.blue .val { color: #2563eb; }
+  .kpi.orange .val { color: #ea580c; }
+  table { width: 100%; border-collapse: collapse; font-size: 9px; margin: 6px 0; }
+  th { background: #1e40af; color: #fff; padding: 5px 6px; text-align: left; font-weight: 600; font-size: 8.5px; }
+  td { padding: 4px 6px; border-bottom: 1px solid #e2e8f0; }
+  tr:nth-child(even) { background: #f8fafc; }
+  tr.highlight { background: #fef3c7; }
+  .right { text-align: right; }
+  .center { text-align: center; }
+  .text-red { color: #dc2626; font-weight: 600; }
+  .text-green { color: #16a34a; }
+  .text-sm { font-size: 9px; color: #475569; }
+  .chart-container { width: 100%; height: 240px; margin: 8px 0; position: relative; }
+  .chart-container.tall { height: 280px; }
+  .analysis { background: #eff6ff; border-left: 4px solid #2563eb; padding: 8px 12px; margin: 8px 0; font-size: 9.5px; line-height: 1.5; border-radius: 0 4px 4px 0; }
+  .analysis strong { color: #1e40af; }
+  .risk-high { background: #fef2f2; border-color: #dc2626; color: #991b1b; }
+  .risk-med { background: #fefce8; border-color: #ca8a04; color: #854d0e; }
+  .risk-low { background: #f0fdf4; border-color: #16a34a; color: #166534; }
+  .badge { display: inline-block; padding: 2px 6px; border-radius: 10px; font-size: 8px; font-weight: 600; }
+  .badge-red { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+  .badge-green { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+  .badge-yellow { background: #fefce8; color: #ca8a04; border: 1px solid #fde68a; }
+  .footer { text-align: center; font-size: 8px; color: #94a3b8; margin-top: 8px; padding-top: 6px; border-top: 1px solid #e2e8f0; }
+  .action-item { background: #fff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 6px 8px; margin: 4px 0; }
+  .action-item .num { display: inline-block; width: 18px; height: 18px; background: #2563eb; color: #fff; border-radius: 50%; text-align: center; line-height: 18px; font-size: 9px; font-weight: 700; margin-right: 6px; }
+  .watermark { position: fixed; bottom: 8px; right: 12px; font-size: 7px; color: #cbd5e1; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════════ PAGE 1: COVER + GROUP KPIs ═══════════════════ -->
+<div class="page">
+  <h1>SuperIce Group — Business Intelligence Report</h1>
+  <div class="subtitle">Full Financial & Customer Analysis | Data Period: January 2024 – February 2026 | Generated: 17/02/2026</div>
+
+  <h2>1. Group Overview — Key Performance Indicators</h2>
+  <div class="kpi-row">
+    <div class="kpi blue"><div class="val">฿372.75M</div><div class="lbl">Total Group Revenue (2024-2026)</div></div>
+    <div class="kpi green"><div class="val">501,591</div><div class="lbl">Total Transactions</div></div>
+    <div class="kpi orange"><div class="val">358</div><div class="lbl">Unique Customers (Union)</div></div>
+    <div class="kpi red"><div class="val">฿69.91M</div><div class="lbl">Total Outstanding</div></div>
+  </div>
+
+  <div class="analysis">
+    <strong>Executive Summary:</strong> The SuperIce Group generated ฿372.7M in total revenue across three factories over the analysis period. SI is the largest revenue contributor at ฿185.9M (49.9%), followed by KTK at ฿101.3M (27.2%) and Bearing at ฿85.5M (22.9%). A clear declining trend in revenue is observed across all three factories from 2024 to 2025, with SI showing the steepest decline at -14.2% year-over-year. The group's biggest financial risk is concentrated in SI's outstanding receivables of ฿69.3M, while Bearing maintains a perfect 100% collection rate and KTK operates at 99.4%. The customer base is stable but maturing — virtually zero new customer acquisition since mid-2025, which signals a saturated distribution network and a need for proactive growth strategies.
+  </div>
+
+  <h2>2. Year-over-Year Performance by Factory</h2>
+  <div class="grid3">
+    
+    <div class="card">
+      <div class="card-header">SI (ซูเปอร์ไอซ์)</div>
+      <table>
+        <tr><th>Year</th><th class="right">Revenue</th><th class="right">Collected</th><th class="right">O/S</th><th class="right">Coll%</th><th class="right">Cust</th><th class="right">Avg Tx</th></tr>
+        <tr><td>2024</td><td class="right">฿95.34M</td><td class="right">฿59.65M</td><td class="right text-red">฿35.70M</td><td class="right">62.6%</td><td class="right">126</td><td class="right">฿969</td></tr><tr><td>2025</td><td class="right">฿81.76M</td><td class="right">฿51.40M</td><td class="right text-red">฿30.35M</td><td class="right">62.9%</td><td class="right">138</td><td class="right">฿869</td></tr><tr><td>2026</td><td class="right">฿8.82M</td><td class="right">฿5.56M</td><td class="right text-red">฿3.25M</td><td class="right">63.1%</td><td class="right">104</td><td class="right">฿767</td></tr>
+        <tr style="background:#f1f5f9;font-weight:600"><td colspan="2">YoY Change</td><td colspan="5" class="text-red">-14.2% (2024→2025)</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-header">แบริ่ง (Bearing)</div>
+      <table>
+        <tr><th>Year</th><th class="right">Revenue</th><th class="right">Collected</th><th class="right">O/S</th><th class="right">Coll%</th><th class="right">Cust</th><th class="right">Avg Tx</th></tr>
+        <tr><td>2024</td><td class="right">฿44.34M</td><td class="right">฿44.34M</td><td class="right ">—</td><td class="right">100.0%</td><td class="right">119</td><td class="right">฿457</td></tr><tr><td>2025</td><td class="right">฿36.82M</td><td class="right">฿36.82M</td><td class="right ">—</td><td class="right">100.0%</td><td class="right">121</td><td class="right">฿417</td></tr><tr><td>2026</td><td class="right">฿4.33M</td><td class="right">฿4.33M</td><td class="right ">—</td><td class="right">100.0%</td><td class="right">93</td><td class="right">฿405</td></tr>
+        <tr style="background:#f1f5f9;font-weight:600"><td colspan="2">YoY Change</td><td colspan="5" class="text-red">-17.0% (2024→2025)</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-header">KTK</div>
+      <table>
+        <tr><th>Year</th><th class="right">Revenue</th><th class="right">Collected</th><th class="right">O/S</th><th class="right">Coll%</th><th class="right">Cust</th><th class="right">Avg Tx</th></tr>
+        <tr><td>2024</td><td class="right">฿50.82M</td><td class="right">฿50.53M</td><td class="right text-red">฿0.29M</td><td class="right">99.4%</td><td class="right">67</td><td class="right">฿1,030</td></tr><tr><td>2025</td><td class="right">฿45.39M</td><td class="right">฿45.12M</td><td class="right text-red">฿0.27M</td><td class="right">99.4%</td><td class="right">69</td><td class="right">฿976</td></tr><tr><td>2026</td><td class="right">฿5.13M</td><td class="right">฿5.08M</td><td class="right text-red">฿0.04M</td><td class="right">99.1%</td><td class="right">50</td><td class="right">฿879</td></tr>
+        <tr style="background:#f1f5f9;font-weight:600"><td colspan="2">YoY Change</td><td colspan="5" class="text-red">-10.7% (2024→2025)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="analysis">
+    <strong>Year-over-Year Analysis:</strong> All three factories experienced revenue declines from 2024 to 2025. SI dropped from ฿95.3M to ฿81.8M (-14.2%), while average transaction value fell from ฿969 to ฿869 (-10.3%). Bearing declined from ฿44.3M to ฿36.8M (-17.0%), reflecting both fewer transactions (-9.1%) and lower ticket size. KTK showed the most resilience, dropping from ฿50.8M to ฿45.4M (-10.7%), with its average transaction value of ฿976 remaining the highest among all factories despite decreasing from ฿1,030. The 2026 annualized run-rate (based on Jan data) projects further softening: SI ~฿66.6M, Bearing ~฿33.2M, KTK ~฿38.8M — implying the downward trend is accelerating unless corrective measures are taken.
+  </div>
+
+  <div class="footer">SuperIce Group — Confidential BI Report | Page 1 of 6</div>
+</div>
+
+<!-- ═══════════════════ PAGE 2: MONTHLY SALES TREND CHARTS ═══════════════════ -->
+<div class="page">
+  <h2>3. Monthly Sales Trend — All Factories (Line Chart)</h2>
+  <div class="chart-container tall">
+    <canvas id="chartSalesAll"></canvas>
+  </div>
+
+  <div class="analysis">
+    <strong>Trend Analysis:</strong> The line chart reveals a consistent seasonal pattern: sales peak in April (summer/Songkran) and bottom out in December-January (cool season). SI shows the most pronounced seasonality with ฿9.2M peak (Apr 2024) versus ฿5.5M trough (Jan 2026) — a 40% swing. Each successive year, the peaks and troughs both shift downward, indicating structural demand erosion beyond just seasonality. Bearing follows a similar but flatter pattern, while KTK maintains the most stable month-to-month profile with only ~20% seasonal variance. Notably, the gap between SI and KTK is narrowing — from ฿3.7M in Jan 2024 to ฿2.3M in Jan 2026 — suggesting KTK's relative competitive position is improving.
+  </div>
+
+  <h2>4. Monthly Revenue by Factory (Individual Trends)</h2>
+  <div class="grid3">
+    <div class="chart-container"><canvas id="chartSI"></canvas></div>
+    <div class="chart-container"><canvas id="chartBearing"></canvas></div>
+    <div class="chart-container"><canvas id="chartKTK"></canvas></div>
+  </div>
+
+  <h2>5. Monthly Active Customers & New Customer Acquisition</h2>
+  <div class="chart-container tall">
+    <canvas id="chartCustomers"></canvas>
+  </div>
+
+  <div class="analysis">
+    <strong>Customer Dynamics:</strong> The active customer count remains remarkably stable: SI hovers at 100-106 per month, Bearing at 86-96, and KTK at 46-57. However, new customer acquisition has essentially flatlined since mid-2024. SI added only 25 new customers in all of 2025 (vs. 26 in 2024), Bearing added 15 (vs. 28 in 2024), and KTK added just 5 (vs. 16 in 2024). In 2026 so far, zero new customers have been acquired at any factory. This indicates a fully mature market with no organic growth pipeline — revenue improvement can only come from increasing wallet share with existing customers or developing new distribution channels.
+  </div>
+
+  <div class="footer">SuperIce Group — Confidential BI Report | Page 2 of 6</div>
+</div>
+
+<!-- ═══════════════════ PAGE 3: PRODUCT MIX + CONCENTRATION ═══════════════════ -->
+<div class="page">
+  <h2>6. Product Mix Analysis by Factory</h2>
+  <div class="grid3">
+    
+    <div class="card">
+      <div class="card-header">SI (ซูเปอร์ไอซ์)</div>
+      <table>
+        <tr><th>Product</th><th class="right">Revenue</th><th class="right">Share</th><th class="right">Volume</th></tr>
+        <tr><td>แพ็ค</td><td class="right">฿76.00M</td><td class="right">41.3%</td><td class="right">696,205</td></tr><tr><td>เกล็ด</td><td class="right">฿66.67M</td><td class="right">36.2%</td><td class="right">2,805,500</td></tr><tr><td>หลอดเล็ก</td><td class="right">฿28.87M</td><td class="right">15.7%</td><td class="right">1,222,415</td></tr><tr><td>หลอดใหญ่</td><td class="right">฿5.74M</td><td class="right">3.1%</td><td class="right">279,412</td></tr><tr><td>บด</td><td class="right">฿5.73M</td><td class="right">3.1%</td><td class="right">314,802</td></tr><tr><td>หลอด 30</td><td class="right">฿1.04M</td><td class="right">0.6%</td><td class="right">50,232</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-header">แบริ่ง</div>
+      <table>
+        <tr><th>Product</th><th class="right">Revenue</th><th class="right">Share</th><th class="right">Volume</th></tr>
+        <tr><td>แพ็ค</td><td class="right">฿28.86M</td><td class="right">33.9%</td><td class="right">218,847</td></tr><tr><td>เกล็ด</td><td class="right">฿24.33M</td><td class="right">28.6%</td><td class="right">1,117,060</td></tr><tr><td>หลอดเล็ก</td><td class="right">฿16.35M</td><td class="right">19.2%</td><td class="right">899,154</td></tr><tr><td>หลอดใหญ่</td><td class="right">฿9.91M</td><td class="right">11.6%</td><td class="right">1,049,755</td></tr><tr><td>บด</td><td class="right">฿5.32M</td><td class="right">6.3%</td><td class="right">232,073</td></tr><tr><td>หลอด 30</td><td class="right">฿0.36M</td><td class="right">0.4%</td><td class="right">8,324</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-header">KTK</div>
+      <table>
+        <tr><th>Product</th><th class="right">Revenue</th><th class="right">Share</th><th class="right">Volume</th></tr>
+        <tr><td>เกล็ด</td><td class="right">฿35.89M</td><td class="right">35.5%</td><td class="right">1,421,097</td></tr><tr><td>แพ็ค</td><td class="right">฿27.86M</td><td class="right">27.6%</td><td class="right">392,022</td></tr><tr><td>หลอดเล็ก</td><td class="right">฿26.24M</td><td class="right">25.9%</td><td class="right">977,970</td></tr><tr><td>หลอดใหญ่</td><td class="right">฿6.59M</td><td class="right">6.5%</td><td class="right">83,286</td></tr><tr><td>หลอด 30</td><td class="right">฿4.31M</td><td class="right">4.3%</td><td class="right">108,356</td></tr><tr><td>บด</td><td class="right">฿0.23M</td><td class="right">0.2%</td><td class="right">9,526</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="analysis">
+    <strong>Product Mix Insights:</strong> แพ็ค (pack) and เกล็ด (crushed) together account for 77.5% of SI revenue, 62.5% of Bearing, and 63.1% of KTK. SI is the most pack-dominant (41.3%), reflecting its customer profile of larger distributors. KTK is uniquely เกล็ด-heavy (35.5%), suggesting a different end-market mix skewed toward food/beverage vendors. Bearing has the most balanced portfolio with หลอดใหญ่ (large tube) contributing a meaningful 11.6% — nearly 4x the share vs SI. The บด (ground) category is interesting: it represents 6.3% of Bearing but only 0.2% of KTK, indicating significant product preference differences between the factory's customer bases. This data suggests cross-selling opportunities: introducing Bearing's หลอดใหญ่ product mix at SI, and growing บด at KTK.
+  </div>
+
+  <h2>7. Customer Concentration Risk Analysis</h2>
+  <div class="grid3">
+    
+    <div class="card">
+      <div class="card-header">SI (ซูเปอร์ไอซ์)</div>
+      <table>
+        <tr><th>Metric</th><th class="right">Value</th><th>Risk Level</th></tr>
+        <tr><td>Top 5 Share</td><td class="right">29.2%</td><td><span class="badge badge-yellow">MEDIUM</span></td></tr>
+        <tr><td>Top 10 Share</td><td class="right">42.0%</td><td><span class="badge badge-yellow">MEDIUM</span></td></tr>
+        <tr><td>Top 20 Share</td><td class="right">57.9%</td><td><span class="badge badge-green">OK</span></td></tr>
+        <tr><td>Total Customers</td><td class="right">151</td><td><span class="badge badge-green">BASE</span></td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-header">แบริ่ง</div>
+      <table>
+        <tr><th>Metric</th><th class="right">Value</th><th>Risk Level</th></tr>
+        <tr><td>Top 5 Share</td><td class="right">27.2%</td><td><span class="badge badge-yellow">MEDIUM</span></td></tr>
+        <tr><td>Top 10 Share</td><td class="right">41.5%</td><td><span class="badge badge-yellow">MEDIUM</span></td></tr>
+        <tr><td>Top 20 Share</td><td class="right">60.6%</td><td><span class="badge badge-yellow">MEDIUM</span></td></tr>
+        <tr><td>Total Customers</td><td class="right">134</td><td><span class="badge badge-green">BASE</span></td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-header">KTK</div>
+      <table>
+        <tr><th>Metric</th><th class="right">Value</th><th>Risk Level</th></tr>
+        <tr><td>Top 5 Share</td><td class="right">29.4%</td><td><span class="badge badge-yellow">MEDIUM</span></td></tr>
+        <tr><td>Top 10 Share</td><td class="right">48.4%</td><td><span class="badge badge-yellow">MEDIUM</span></td></tr>
+        <tr><td>Top 20 Share</td><td class="right">75.1%</td><td><span class="badge badge-red">HIGH</span></td></tr>
+        <tr><td>Total Customers</td><td class="right">73</td><td><span class="badge badge-green">BASE</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="analysis risk-med">
+    <strong>Concentration Risk:</strong> KTK has the highest concentration risk — its top 20 customers control 75.1% of revenue, with only 73 customers total. Losing even 2-3 top accounts could reduce KTK revenue by 15-20%. SI and Bearing have more distributed bases (151 and 134 customers respectively), but their top-5 still control 27-29% of revenue. The recommended concentration limit is Top-5 ≤ 25%, Top-10 ≤ 35%, Top-20 ≤ 50%. All three factories currently exceed these thresholds, particularly for Top-20, making customer retention and diversification critical priorities.
+  </div>
+
+  <div class="footer">SuperIce Group — Confidential BI Report | Page 3 of 6</div>
+</div>
+
+<!-- ═══════════════════ PAGE 4: TOP 20 CUSTOMERS (SI) ═══════════════════ -->
+<div class="page">
+  <h2>8. Top 20 Customers — SI (ซูเปอร์ไอซ์)</h2>
+  <p class="text-sm">Ranked by total sales volume | Period: Jan 2024 – Feb 2026</p>
+  <table>
+    <tr><th>#</th><th>Customer Name</th><th class="right">Total Sales</th><th class="right">Collected</th><th class="right">Outstanding</th><th class="right">Coll%</th><th class="center">Tx Count</th><th class="center">Active Months</th><th>Status</th></tr>
+    <tr class="highlight"><td>1</td><td>พันธ์สิทธิ์01-8472741</td><td class="right">฿16,280,718</td><td class="right">฿-111,711</td><td class="right text-red">฿16,392,429</td><td class="right">-0.7%</td><td class="center">3,890</td><td class="center">26/26</td><td><span class="badge badge-red">CRITICAL</span></td></tr><tr class="highlight"><td>2</td><td>โรงน้ำแข็งสุขุมวิท 50</td><td class="right">฿15,744,132</td><td class="right">฿78,452</td><td class="right text-red">฿15,665,680</td><td class="right">0.5%</td><td class="center">1,638</td><td class="center">26/26</td><td><span class="badge badge-red">CRITICAL</span></td></tr><tr class="highlight"><td>3</td><td>ชัยวัฒน์ เพ็ญศรีชล</td><td class="right">฿9,465,309</td><td class="right">฿-28,728</td><td class="right text-red">฿9,494,037</td><td class="right">-0.3%</td><td class="center">3,132</td><td class="center">26/26</td><td><span class="badge badge-red">CRITICAL</span></td></tr><tr class=""><td>4</td><td>สินธานี(เจ้)-ส่ง</td><td class="right">฿6,515,596</td><td class="right">฿6,515,596</td><td class="right ">—</td><td class="right">100.0%</td><td class="center">2,571</td><td class="center">26/26</td><td><span class="badge badge-green">PAID</span></td></tr><tr class="highlight"><td>5</td><td>พลูศรี(พงษ์เจริญ)</td><td class="right">฿6,370,847</td><td class="right">฿33,473</td><td class="right text-red">฿6,337,374</td><td class="right">0.5%</td><td class="center">4,342</td><td class="center">26/26</td><td><span class="badge badge-red">CRITICAL</span></td></tr><tr class=""><td>6</td><td>ไพฑูรย์</td><td class="right">฿6,020,882</td><td class="right">฿6,020,882</td><td class="right ">—</td><td class="right">100.0%</td><td class="center">4,365</td><td class="center">26/26</td><td><span class="badge badge-green">PAID</span></td></tr><tr class=""><td>7</td><td>ปั้ง (เสรีไทยซอย 81)</td><td class="right">฿5,539,570</td><td class="right">฿5,539,570</td><td class="right ">—</td><td class="right">100.0%</td><td class="center">2,503</td><td class="center">26/26</td><td><span class="badge badge-green">PAID</span></td></tr><tr class=""><td>8</td><td>บอยไก่บิน</td><td class="right">฿4,182,980</td><td class="right">฿4,182,980</td><td class="right ">—</td><td class="right">100.0%</td><td class="center">1,963</td><td class="center">26/26</td><td><span class="badge badge-green">PAID</span></td></tr><tr class="highlight"><td>9</td><td>ปัฐวิกรณ์(ส่ง)</td><td class="right">฿4,087,652</td><td class="right">฿-424,146</td><td class="right text-red">฿4,511,798</td><td class="right">-10.4%</td><td class="center">2,443</td><td class="center">26/26</td><td><span class="badge badge-red">CRITICAL</span></td></tr><tr class=""><td>10</td><td>โฉมศรี ดวงเดือน</td><td class="right">฿3,885,667</td><td class="right">฿3,885,667</td><td class="right ">—</td><td class="right">100.0%</td><td class="center">2,023</td><td class="center">26/26</td><td><span class="badge badge-green">PAID</span></td></tr><tr class=""><td>11</td><td>เฮียเปี๊ยก</td><td class="right">฿3,523,886</td><td class="right">฿3,521,902</td><td class="right text-red">฿1,984</td><td class="right">99.9%</td><td class="center">2,284</td><td class="center">26/26</td><td><span class="badge badge-yellow">PARTIAL</span></td></tr><tr class=""><td>12</td><td>ตี๋น้อย ประตูน้ำ</td><td class="right">฿3,455,115</td><td class="right">฿3,455,115</td><td class="right ">—</td><td class="right">100.0%</td><td class="center">2,380</td><td class="center">26/26</td><td><span class="badge badge-green">PAID</span></td></tr><tr class="highlight"><td>13</td><td>อ้วน (บางกะปิ)</td><td class="right">฿3,364,247</td><td class="right">฿-8,032</td><td class="right text-red">฿3,372,279</td><td class="right">-0.2%</td><td class="center">3,069</td><td class="center">26/26</td><td><span class="badge badge-red">CRITICAL</span></td></tr><tr class=""><td>14</td><td>ศราวุธ(วุฒิ น้ำแข็ง)</td><td class="right">฿3,345,597</td><td class="right">฿3,345,597</td><td class="right ">—</td><td class="right">100.0%</td><td class="center">2,607</td><td class="center">26/26</td><td><span class="badge badge-green">PAID</span></td></tr><tr class=""><td>15</td><td>ภาพร (สายฝน)</td><td class="right">฿2,970,282</td><td class="right">฿2,970,282</td><td class="right ">—</td><td class="right">100.0%</td><td class="center">5,397</td><td class="center">26/26</td><td><span class="badge badge-green">PAID</span></td></tr><tr class=""><td>16</td><td>สด(แช่)</td><td class="right">฿2,722,120</td><td class="right">฿2,722,120</td><td class="right ">—</td><td class="right">100.0%</td><td class="center">11,378</td><td class="center">26/26</td><td><span class="badge badge-green">PAID</span></td></tr><tr class="highlight"><td>17</td><td>ตลาดศรีดินแดง</td><td class="right">฿2,686,540</td><td class="right">฿-13,516</td><td class="right text-red">฿2,700,056</td><td class="right">-0.5%</td><td class="center">827</td><td class="center">26/26</td><td><span class="badge badge-red">CRITICAL</span></td></tr><tr class=""><td>18</td><td>งิ้ง</td><td class="right">฿2,630,140</td><td class="right">฿2,630,140</td><td class="right ">—</td><td class="right">100.0%</td><td class="center">3,062</td><td class="center">26/26</td><td><span class="badge badge-green">PAID</span></td></tr><tr class=""><td>19</td><td>เซี้ยม</td><td class="right">฿2,462,935</td><td class="right">฿2,462,935</td><td class="right ">—</td><td class="right">100.0%</td><td class="center">1,591</td><td class="center">26/26</td><td><span class="badge badge-green">PAID</span></td></tr><tr class=""><td>20</td><td>รนข.ราม39(3)</td><td class="right">฿2,457,174</td><td class="right">฿2,457,174</td><td class="right ">—</td><td class="right">100.0%</td><td class="center">1,755</td><td class="center">26/26</td><td><span class="badge badge-green">PAID</span></td></tr>
+  </table>
+
+  <div class="analysis risk-high">
+    <strong>SI Collections Alert — ฿69.3M Outstanding:</strong> Five customers carry the bulk of SI's receivables crisis. พันธ์สิทธิ์ (฿16.4M), โรงน้ำแข็งสุขุมวิท 50 (฿15.7M), and ชัยวัฒน์ (฿9.5M) together owe ฿41.6M — representing 60% of SI's total outstanding and 22% of SI's total revenue. Critically, these accounts show <strong>negative collection rates</strong>, meaning they are taking more product on credit than they are paying — the debt is actively growing. ปัฐวิกรณ์ has the worst ratio at -10.4% collection rate with ฿4.5M outstanding. Immediate intervention is required: credit holds, payment plans, or legal action. On the positive side, 14 of the top 20 SI customers have 100% collection rates, indicating this is a concentrated problem, not a systemic one.
+  </div>
+
+  <div class="footer">SuperIce Group — Confidential BI Report | Page 4 of 6</div>
+</div>
+
+<!-- ═══════════════════ PAGE 5: TOP 20 CUSTOMERS (BEARING + KTK) ═══════════════════ -->
+<div class="page">
+  <h2>9. Top 20 Customers — แบริ่ง (Bearing)</h2>
+  <p class="text-sm">Ranked by total sales volume | Period: Jan 2024 – Feb 2026 | <span class="badge badge-green">100% Collection Rate — All Customers</span></p>
+  <table>
+    <tr><th>#</th><th>Customer Name</th><th class="right">Total Sales</th><th class="center">Tx Count</th><th class="center">Active Months</th><th class="right">Monthly Avg</th></tr>
+    <tr><td>1</td><td>ตลาดนางรำ</td><td class="right">฿6,609,265</td><td class="center">2,196</td><td class="center">26/26</td><td class="right">฿254,203</td></tr><tr><td>2</td><td>วีรชัย(สุเทพ)</td><td class="right">฿5,692,412</td><td class="center">4,243</td><td class="center">26/26</td><td class="right">฿218,939</td></tr><tr><td>3</td><td>สดส่ง ครึ่งซอง</td><td class="right">฿4,554,827</td><td class="center">29,075</td><td class="center">26/26</td><td class="right">฿175,186</td></tr><tr><td>4</td><td>นิตยา น้ำแข็ง</td><td class="right">฿3,361,967</td><td class="center">4,278</td><td class="center">26/26</td><td class="right">฿129,306</td></tr><tr><td>5</td><td>ส.วารี</td><td class="right">฿3,068,443</td><td class="center">4,132</td><td class="center">26/26</td><td class="right">฿118,017</td></tr><tr><td>6</td><td>เพชภูมิ</td><td class="right">฿2,714,733</td><td class="center">3,254</td><td class="center">26/26</td><td class="right">฿104,413</td></tr><tr><td>7</td><td>ธนพล</td><td class="right">฿2,670,172</td><td class="center">2,261</td><td class="center">26/26</td><td class="right">฿102,699</td></tr><tr><td>8</td><td>ณัฐมน</td><td class="right">฿2,370,465</td><td class="center">1,992</td><td class="center">26/26</td><td class="right">฿91,172</td></tr><tr><td>9</td><td>พิกุล น้ำแข็ง</td><td class="right">฿2,236,061</td><td class="center">2,560</td><td class="center">26/26</td><td class="right">฿86,002</td></tr><tr><td>10</td><td>สดแช่</td><td class="right">฿2,200,860</td><td class="center">5,238</td><td class="center">26/26</td><td class="right">฿84,648</td></tr><tr><td>11</td><td>จิวารัตน์ ใสสุข</td><td class="right">฿1,893,628</td><td class="center">3,481</td><td class="center">26/26</td><td class="right">฿72,832</td></tr><tr><td>12</td><td>บุญถม</td><td class="right">฿1,836,965</td><td class="center">1,694</td><td class="center">26/26</td><td class="right">฿70,653</td></tr><tr><td>13</td><td>รัตนทัต ช้างม่วง</td><td class="right">฿1,820,590</td><td class="center">789</td><td class="center">26/26</td><td class="right">฿70,023</td></tr><tr><td>14</td><td>ปานตะวัน</td><td class="right">฿1,732,773</td><td class="center">2,607</td><td class="center">26/26</td><td class="right">฿66,645</td></tr><tr><td>15</td><td>ธนวัฒน์</td><td class="right">฿1,713,483</td><td class="center">1,584</td><td class="center">26/26</td><td class="right">฿65,903</td></tr><tr><td>16</td><td>ธนพล น้ำแข็ง</td><td class="right">฿1,654,927</td><td class="center">2,487</td><td class="center">26/26</td><td class="right">฿63,651</td></tr><tr><td>17</td><td>MAX OK</td><td class="right">฿1,513,316</td><td class="center">1,469</td><td class="center">26/26</td><td class="right">฿58,204</td></tr><tr><td>18</td><td>สดปลีก</td><td class="right">฿1,440,462</td><td class="center">9,417</td><td class="center">26/26</td><td class="right">฿55,402</td></tr><tr><td>19</td><td>แหวนพลอย</td><td class="right">฿1,354,206</td><td class="center">2,334</td><td class="center">26/26</td><td class="right">฿52,085</td></tr><tr><td>20</td><td>ชัย น้ำแข็ง</td><td class="right">฿1,326,818</td><td class="center">1,502</td><td class="center">26/26</td><td class="right">฿51,031</td></tr>
+  </table>
+
+  <h2>10. Top 20 Customers — KTK</h2>
+  <p class="text-sm">Ranked by total sales volume | Period: Jan 2024 – Feb 2026 | <span class="badge badge-green">99.4% Collection Rate</span></p>
+  <table>
+    <tr><th>#</th><th>Customer Name</th><th class="right">Total Sales</th><th class="center">Tx Count</th><th class="center">Active Months</th><th class="right">Monthly Avg</th></tr>
+    <tr><td>1</td><td>พัฒนาการ 32 (จุดกระจายสินค้า)</td><td class="right">฿9,513,742</td><td class="center">1,598</td><td class="center">26/26</td><td class="right">฿365,913</td></tr><tr><td>2</td><td>น้ำแข็งเมืองทองเฮียไฮ้</td><td class="right">฿5,782,737</td><td class="center">3,226</td><td class="center">26/26</td><td class="right">฿222,413</td></tr><tr><td>3</td><td>นพรัตน์ ( ลอย )</td><td class="right">฿5,504,824</td><td class="center">1,593</td><td class="center">26/26</td><td class="right">฿211,724</td></tr><tr><td>4</td><td>ภู น้ำแข็ง (คันเทา)</td><td class="right">฿4,548,211</td><td class="center">1,703</td><td class="center">26/26</td><td class="right">฿174,931</td></tr><tr><td>5</td><td>จ่อย ( 2 ) < VIGO ตล-8106 ></td><td class="right">฿4,427,600</td><td class="center">4,441</td><td class="center">26/26</td><td class="right">฿170,292</td></tr><tr><td>6</td><td>เฮียวันชัย</td><td class="right">฿4,345,197</td><td class="center">1,715</td><td class="center">26/26</td><td class="right">฿167,123</td></tr><tr><td>7</td><td>ชัชวาล</td><td class="right">฿3,995,735</td><td class="center">3,927</td><td class="center">26/26</td><td class="right">฿153,682</td></tr><tr><td>8</td><td>นาย สาโรจน์</td><td class="right">฿3,734,227</td><td class="center">2,589</td><td class="center">21/26</td><td class="right">฿177,820</td></tr><tr><td>9</td><td>นัชชา น้ำแข็ง</td><td class="right">฿3,630,164</td><td class="center">2,225</td><td class="center">26/26</td><td class="right">฿139,622</td></tr><tr><td>10</td><td>นาย อภิรักษ์</td><td class="right">฿3,533,347</td><td class="center">2,570</td><td class="center">26/26</td><td class="right">฿135,898</td></tr><tr><td>11</td><td>เฮีย หนอ</td><td class="right">฿3,319,619</td><td class="center">1,606</td><td class="center">26/26</td><td class="right">฿127,678</td></tr><tr><td>12</td><td>ภู น้ำแข็ง (คันขาว)</td><td class="right">฿3,298,628</td><td class="center">2,929</td><td class="center">26/26</td><td class="right">฿126,870</td></tr><tr><td>13</td><td>เมืองทอง</td><td class="right">฿3,291,125</td><td class="center">1,714</td><td class="center">26/26</td><td class="right">฿126,582</td></tr><tr><td>14</td><td>ชัยเจริญ</td><td class="right">฿3,288,533</td><td class="center">2,121</td><td class="center">26/26</td><td class="right">฿126,482</td></tr><tr><td>15</td><td>สมชาย</td><td class="right">฿2,890,673</td><td class="center">2,102</td><td class="center">26/26</td><td class="right">฿111,180</td></tr><tr><td>16</td><td>พระราม 9</td><td class="right">฿2,434,549</td><td class="center">1,642</td><td class="center">26/26</td><td class="right">฿93,637</td></tr><tr><td>17</td><td>ลำสาลี (นุ้ย)</td><td class="right">฿2,379,231</td><td class="center">3,123</td><td class="center">26/26</td><td class="right">฿91,509</td></tr><tr><td>18</td><td>สวนสน</td><td class="right">฿2,167,906</td><td class="center">1,788</td><td class="center">26/26</td><td class="right">฿83,381</td></tr><tr><td>19</td><td>ลำสาลี น้ำแข็ง (นิ)</td><td class="right">฿2,153,110</td><td class="center">3,007</td><td class="center">26/26</td><td class="right">฿82,812</td></tr><tr><td>20</td><td>สมศักดิ์ รวย 2</td><td class="right">฿1,915,321</td><td class="center">815</td><td class="center">26/26</td><td class="right">฿73,666</td></tr>
+  </table>
+
+  <div class="analysis">
+    <strong>Customer Insights — Bearing & KTK:</strong> Both factories demonstrate excellent collection discipline. Bearing's #1 customer (ตลาดนางรำ, ฿6.6M) has a higher avg monthly spend (฿254K) than any other in the group. KTK is dominated by พัฒนาการ 32 (จุดกระจายสินค้า) at ฿9.5M — this single customer represents 9.4% of KTK's total revenue, creating a significant single-point-of-failure risk. KTK's top customer spends ฿365K/month on average, nearly 2x the average of KTK's #2 customer. Bearing's สดส่ง ครึ่งซอง stands out with 29,075 transactions — by far the highest transaction count of any customer in the group — but a relatively low average of ฿157 per transaction, indicating high-frequency small orders (likely walk-in retail). This contrasts with Bearing's #1 ตลาดนางรำ which averages ฿3,009 per transaction.
+  </div>
+
+  <div class="footer">SuperIce Group — Confidential BI Report | Page 5 of 6</div>
+</div>
+
+<!-- ═══════════════════ PAGE 6: RISK + ACTION PLAN ═══════════════════ -->
+<div class="page">
+  <h2>11. Risk Heatmap</h2>
+  <div class="grid3">
+    <div class="card" style="border-left:4px solid #dc2626">
+      <div class="card-header" style="color:#dc2626">HIGH RISK</div>
+      <div class="action-item"><strong>SI Receivables Crisis:</strong> ฿69.3M outstanding (37.3% of SI revenue uncollected). Negative collection trends on top 3 debtors. Risk of write-off if not addressed within 90 days.</div>
+      <div class="action-item"><strong>Group Revenue Decline:</strong> -14.2% SI, -17.0% Bearing, -10.7% KTK year-over-year. Current 2026 run-rate implies a further -10 to -15% decline.</div>
+      <div class="action-item"><strong>Zero New Customer Acquisition:</strong> No new customers at any factory in 2026. Without new channels, revenue can only shrink as existing customers reduce orders.</div>
+    </div>
+    <div class="card" style="border-left:4px solid #ca8a04">
+      <div class="card-header" style="color:#ca8a04">MEDIUM RISK</div>
+      <div class="action-item"><strong>KTK Concentration:</strong> Top 20 = 75.1% of revenue. Loss of top 3 would eliminate ฿20.8M (20.5%) of revenue.</div>
+      <div class="action-item"><strong>Avg Transaction Value Erosion:</strong> Down 10.3% at SI, 8.7% at Bearing. Possible price competition or product mix shift toward lower-margin items.</div>
+      <div class="action-item"><strong>Seasonal Vulnerability:</strong> Dec-Jan cool season drives 15-25% revenue drop. Working capital must be managed for the trough.</div>
+    </div>
+    <div class="card" style="border-left:4px solid #16a34a">
+      <div class="card-header" style="color:#16a34a">LOW RISK / STRENGTHS</div>
+      <div class="action-item"><strong>Bearing Collections:</strong> Perfect 100% collection rate across all customers — zero credit risk.</div>
+      <div class="action-item"><strong>KTK Discipline:</strong> 99.4% collection rate with only ฿0.6M total outstanding.</div>
+      <div class="action-item"><strong>Customer Loyalty:</strong> Core customers active for 26/26 months. Virtually zero churn. Strong operational relationships.</div>
+    </div>
+  </div>
+
+  <h2>12. 90-Day Action Plan (Numeric Targets)</h2>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-header">Phase 1: Cash Recovery (Days 1-30)</div>
+      <div class="action-item"><span class="num">1</span><strong>SI Credit Hold:</strong> Freeze credit for accounts with collection rate < 50%. Target: recover ฿10M from top 5 debtors within 30 days.</div>
+      <div class="action-item"><span class="num">2</span><strong>Payment Plans:</strong> Structure 6-month repayment plans for พันธ์สิทธิ์ (฿16.4M) and โรงน้ำแข็งสุขุมวิท 50 (฿15.7M). Monthly minimum ฿2.5M each.</div>
+      <div class="action-item"><span class="num">3</span><strong>Target:</strong> SI collection rate from 63% → 70% within 30 days. Cash conversion improvement of ฿5M.</div>
+    </div>
+    <div class="card">
+      <div class="card-header">Phase 2: Volume Stabilization (Days 31-60)</div>
+      <div class="action-item"><span class="num">4</span><strong>Volume Recovery Target:</strong> Arrest monthly decline at all 3 factories. March 2026 target: SI ≥ ฿6.5M, Bearing ≥ ฿3.0M, KTK ≥ ฿3.5M.</div>
+      <div class="action-item"><span class="num">5</span><strong>Cross-sell Initiative:</strong> Introduce Bearing's หลอดใหญ่ mix to 15 SI accounts. Target: ฿200K incremental monthly revenue.</div>
+      <div class="action-item"><span class="num">6</span><strong>Price Analysis:</strong> Review avg tx value decline. If pricing is the issue, implement 3-5% price correction on top 3 SKUs at each factory.</div>
+    </div>
+    <div class="card">
+      <div class="card-header">Phase 3: Growth Foundation (Days 61-90)</div>
+      <div class="action-item"><span class="num">7</span><strong>New Customer Target:</strong> Acquire 5 new customers per factory by Day 90. Focus on geographic gaps around existing delivery routes.</div>
+      <div class="action-item"><span class="num">8</span><strong>Concentration Limit:</strong> Reduce KTK Top-5 share from 29.4% to ≤ 27% by growing mid-tier accounts. Offer volume incentives to customers ranked 10-30.</div>
+      <div class="action-item"><span class="num">9</span><strong>Quarterly Target:</strong> Q2 2026 group revenue ≥ ฿30M/month (vs current ฿18.4M run-rate, accounting for Feb being partial). This represents a 5% improvement over Q1 2026 trajectory.</div>
+    </div>
+    <div class="card">
+      <div class="card-header">KPI Scorecard — Monitoring Cadence</div>
+      <table>
+        <tr><th>KPI</th><th>Current</th><th>30-Day Target</th><th>90-Day Target</th></tr>
+        <tr><td>SI Collection Rate</td><td class="text-red">63.1%</td><td>70%</td><td>75%</td></tr>
+        <tr><td>SI Outstanding</td><td class="text-red">฿69.3M</td><td>฿59M</td><td>฿45M</td></tr>
+        <tr><td>Group Monthly Revenue</td><td>฿18.4M*</td><td>฿19M</td><td>฿20M</td></tr>
+        <tr><td>New Customers (Group)</td><td>0</td><td>5</td><td>15</td></tr>
+        <tr><td>KTK Top-5 Share</td><td>29.4%</td><td>29%</td><td>≤ 27%</td></tr>
+        <tr><td>Avg Tx Value (SI)</td><td>฿767</td><td>฿800</td><td>฿850</td></tr>
+      </table>
+      <p class="text-sm" style="margin-top:4px">* Feb 2026 partial month — full month estimate ~฿19.5M</p>
+    </div>
+  </div>
+
+  <div class="analysis">
+    <strong>Final Recommendation:</strong> The top priority is cash conversion at SI — recovering even 20% of the ฿69.3M outstanding would fund all growth initiatives and improve the group's financial position. The revenue decline across all factories suggests either market share loss to competitors, pricing pressure, or structural demand shifts. A competitive analysis is recommended to identify whether new ice factories have entered the Bangkok market. Operationally, the Bearing factory's 100% collection model should be studied and replicated at SI. KTK's high per-transaction value but small customer base makes it the most efficient but also the most vulnerable factory — diversification there is essential.
+  </div>
+
+  <div class="footer">SuperIce Group — Confidential BI Report | Page 6 of 6 | Report generated automatically from POS database</div>
+</div>
+
+<!-- ═══════════════════ CHART SCRIPTS ═══════════════════ -->
+<script>
+const labels = ["24/01","24/02","24/03","24/04","24/05","24/06","24/07","24/08","24/09","24/10","24/11","24/12","25/01","25/02","25/03","25/04","25/05","25/06","25/07","25/08","25/09","25/10","25/11","25/12","26/01","26/02"];
+const siSales = [7530225,7764791,8690542,9249404,8802882,8288742,7859841,8081351,7429518,7608775,7209564,6827501,6062766,6362368,7598719,7642172,7317377,7240229,7213144,7383604,6536720,6540259,5922916,5936490,5547808,3269764];
+const bearSales = [3621404,3597918,4037534,4468995,4082394,3849869,3525912,3794273,3444101,3495589,3305998,3115409,2857447,3004214,2691817,3366253,3397582,3291973,3219826,3294901,3007817,3106266,2722040,2856391,2764412,1567747];
+const ktkSales = [3821655,3964561,4511324,4781640,4818611,4465223,4233998,4365864,4052496,4109062,4015913,3682299,3389690,3558624,4267678,4035836,3970048,4007886,4003264,4107793,3642636,3655765,3324272,3428863,3231441,1897614];
+
+const siCust = [101,104,105,101,101,101,99,102,102,101,102,104,97,99,101,103,104,101,101,105,104,105,103,106,100,99];
+const bearCust = [91,93,88,93,90,90,89,87,91,89,89,93,92,92,90,96,95,91,94,96,95,95,88,91,89,86];
+const ktkCust = [51,51,53,54,55,52,50,53,52,55,51,54,54,57,52,54,55,52,52,54,54,50,46,52,47,48];
+
+const siNew = [101,6,4,2,3,1,0,3,1,1,1,3,1,1,2,2,2,1,3,7,2,4,0,0,0,0];
+const bearNew = [91,6,3,2,4,4,1,0,5,0,0,3,0,0,1,3,2,1,1,3,2,1,0,1,0,0];
+const ktkNew = [51,5,1,2,2,1,0,1,1,0,1,2,1,1,0,2,0,0,0,0,1,1,0,0,0,0];
+
+Chart.defaults.font.size = 9;
+Chart.defaults.font.family = "'Helvetica Neue','Sarabun',sans-serif";
+
+function millionTick(value) { return '฿' + (value / 1e6).toFixed(1) + 'M'; }
+
+// Combined sales chart
+new Chart(document.getElementById('chartSalesAll'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [
+      { label: 'SI', data: siSales, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.08)', fill: true, tension: 0.3, borderWidth: 2, pointRadius: 2 },
+      { label: 'Bearing', data: bearSales, borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.08)', fill: true, tension: 0.3, borderWidth: 2, pointRadius: 2 },
+      { label: 'KTK', data: ktkSales, borderColor: '#ea580c', backgroundColor: 'rgba(234,88,12,0.08)', fill: true, tension: 0.3, borderWidth: 2, pointRadius: 2 },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'top', labels: { boxWidth: 12 } }, title: { display: true, text: 'Monthly Sales Revenue — All Factories', font: { size: 12 } } },
+    scales: { y: { ticks: { callback: millionTick }, grid: { color: '#f1f5f9' } }, x: { ticks: { maxRotation: 45 }, grid: { display: false } } },
+    animation: false
+  }
+});
+
+// Individual factory charts
+[['chartSI','SI','#2563eb',siSales],['chartBearing','Bearing','#16a34a',bearSales],['chartKTK','KTK','#ea580c',ktkSales]].forEach(([id,name,color,data]) => {
+  new Chart(document.getElementById(id), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{ label: name + ' Revenue', data, borderColor: color, backgroundColor: color+'18', fill: true, tension: 0.3, borderWidth: 2, pointRadius: 1.5 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, title: { display: true, text: name + ' Monthly Revenue', font: { size: 10 } } },
+      scales: { y: { ticks: { callback: millionTick, font: { size: 7 } }, grid: { color: '#f1f5f9' } }, x: { ticks: { maxRotation: 60, font: { size: 6 } }, grid: { display: false } } },
+      animation: false
+    }
+  });
+});
+
+// Customer chart
+new Chart(document.getElementById('chartCustomers'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [
+      { label: 'SI Active', data: siCust, borderColor: '#2563eb', borderWidth: 2, pointRadius: 2, tension: 0.3 },
+      { label: 'Bearing Active', data: bearCust, borderColor: '#16a34a', borderWidth: 2, pointRadius: 2, tension: 0.3 },
+      { label: 'KTK Active', data: ktkCust, borderColor: '#ea580c', borderWidth: 2, pointRadius: 2, tension: 0.3 },
+      { label: 'SI New', data: siNew, borderColor: '#2563eb', borderDash: [4,2], borderWidth: 1, pointRadius: 1, tension: 0.3, yAxisID: 'y1' },
+      { label: 'Bearing New', data: bearNew, borderColor: '#16a34a', borderDash: [4,2], borderWidth: 1, pointRadius: 1, tension: 0.3, yAxisID: 'y1' },
+      { label: 'KTK New', data: ktkNew, borderColor: '#ea580c', borderDash: [4,2], borderWidth: 1, pointRadius: 1, tension: 0.3, yAxisID: 'y1' },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'top', labels: { boxWidth: 12, font: { size: 8 } } }, title: { display: true, text: 'Active Customers (solid) & New Customers (dashed)', font: { size: 11 } } },
+    scales: {
+      y: { title: { display: true, text: 'Active Customers' }, grid: { color: '#f1f5f9' } },
+      y1: { position: 'right', title: { display: true, text: 'New Customers' }, grid: { display: false }, min: 0 },
+      x: { ticks: { maxRotation: 45 }, grid: { display: false } }
+    },
+    animation: false
+  }
+});
+</script>
+</body>
+</html>

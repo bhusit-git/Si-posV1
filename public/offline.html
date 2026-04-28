@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Super Ice Offline</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Noto Sans Thai", system-ui, sans-serif;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: linear-gradient(180deg, #eff6ff 0%, #f8fafc 42%, #e0f2fe 100%);
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      .card {
+        width: min(100%, 560px);
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid #bfdbfe;
+        border-radius: 20px;
+        box-shadow: 0 24px 50px rgba(15, 23, 42, 0.12);
+        padding: 24px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 24px;
+      }
+      p {
+        margin: 0 0 12px;
+        line-height: 1.5;
+      }
+      .actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 16px;
+        border-radius: 12px;
+        border: 1px solid #2563eb;
+        background: #2563eb;
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .btn.secondary {
+        background: white;
+        color: #1e40af;
+      }
+      .hint {
+        border-radius: 14px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        padding: 12px 14px;
+        margin-top: 16px;
+      }
+      .receipt {
+        font-size: 13px;
+      }
+      .receipt h2 {
+        margin: 0 0 12px;
+        text-align: center;
+        font-size: 20px;
+      }
+      .divider {
+        border-top: 1px dashed #94a3b8;
+        margin: 12px 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: 4px 0;
+        text-align: left;
+      }
+      th:last-child,
+      td:last-child {
+        text-align: right;
+      }
+      .small {
+        color: #475569;
+        font-size: 12px;
+      }
+      @media print {
+        body {
+          background: white;
+          padding: 0;
+        }
+        .card {
+          width: auto;
+          border: 0;
+          box-shadow: none;
+          border-radius: 0;
+          padding: 12px;
+        }
+        .no-print {
+          display: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card" id="app">
+      <h1>กำลังเตรียมหน้าออฟไลน์...</h1>
+    </main>
+    <script>
+      (function () {
+        const OFFLINE_SESSION_STORAGE_KEY = "superice-offline-capable-session";
+        const OFFLINE_PRINT_PREFIX = "superice-offline-print:";
+
+        function escapeHtml(value) {
+          return String(value)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#39;");
+        }
+
+        function formatMoney(value) {
+          const amount = Number(value || 0);
+          return amount.toLocaleString("th-TH", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          });
+        }
+
+        function readOfflineSession() {
+          try {
+            const raw = window.localStorage.getItem(OFFLINE_SESSION_STORAGE_KEY);
+            return raw ? JSON.parse(raw) : null;
+          } catch {
+            return null;
+          }
+        }
+
+        function readOfflinePayload(token) {
+          if (!token) return null;
+          try {
+            const raw = window.localStorage.getItem(OFFLINE_PRINT_PREFIX + token);
+            return raw ? JSON.parse(raw) : null;
+          } catch {
+            return null;
+          }
+        }
+
+        function receiptHtml(payload) {
+          const rows = (payload.items || [])
+            .filter((item) => Number(item.quantity) > 0)
+            .map(function (item) {
+              return (
+                "<tr>" +
+                "<td>" + escapeHtml(item.productType && item.productType.name ? item.productType.name : "สินค้า") + "</td>" +
+                "<td>" + escapeHtml(item.quantity) + "</td>" +
+                "<td>" + formatMoney(item.subtotal) + "</td>" +
+                "</tr>"
+              );
+            })
+            .join("");
+
+          return (
+            '<div class="receipt">' +
+            '<div class="no-print actions"><button class="btn" onclick="window.print()">พิมพ์ใบเสร็จ</button><button class="btn secondary" onclick="window.close()">ปิด</button></div>' +
+            "<h2>Super Ice (SI)</h2>" +
+            "<p><strong>ใบเสร็จออฟไลน์</strong></p>" +
+            '<div class="divider"></div>' +
+            "<p><strong>ลูกค้า:</strong> " + escapeHtml(payload.customer && payload.customer.name ? payload.customer.name : "-") + "</p>" +
+            "<p><strong>วันที่:</strong> " + escapeHtml(payload.saleDate || "-") + "</p>" +
+            "<p><strong>เวลา:</strong> " + escapeHtml((payload.saleTime || "").slice(0, 5)) + "</p>" +
+            "<p><strong>สถานะ:</strong> " + escapeHtml(payload.status || "-") + "</p>" +
+            '<div class="divider"></div>' +
+            "<table><thead><tr><th>สินค้า</th><th>จำนวน</th><th>รวม</th></tr></thead><tbody>" +
+            rows +
+            "</tbody></table>" +
+            '<div class="divider"></div>' +
+            "<p><strong>ยอดรวม:</strong> " + formatMoney(payload.totalAmount) + "</p>" +
+            "<p><strong>รับแล้ว:</strong> " + formatMoney(payload.paid) + "</p>" +
+            '<p class="small">พิมพ์จาก payload ออฟไลน์ที่บันทึกไว้ในเครื่องนี้</p>' +
+            "</div>"
+          );
+        }
+
+        function renderNavigationFallback(session) {
+          const canOpenSale = !!session;
+          const app = document.getElementById("app");
+          app.innerHTML =
+            "<h1>อุปกรณ์นี้กำลังออฟไลน์</h1>" +
+            (canOpenSale
+              ? "<p>เครื่องนี้เคยเข้าสู่ระบบแล้ว คุณสามารถกลับไปหน้าขายที่แคชไว้เพื่อทำรายการออฟไลน์ได้</p>"
+              : "<p>ยังไม่มี session ที่อนุญาตให้ออฟไลน์บนเครื่องนี้ กรุณาเชื่อมต่ออินเทอร์เน็ตและเข้าสู่ระบบอย่างน้อยหนึ่งครั้งก่อน</p>") +
+            '<div class="hint"><strong>โหมดที่รองรับในรอบนี้:</strong> หน้าขาย, คิวออฟไลน์, และการพิมพ์จากรายการที่เพิ่งบันทึกพร้อม offlineToken</div>' +
+            '<div class="actions">' +
+            (canOpenSale
+              ? '<a class="btn" href="/sale">เปิดหน้าขาย</a>'
+              : "") +
+            '<a class="btn secondary" href="/">กลับหน้าหลัก</a>' +
+            "</div>";
+        }
+
+        function renderPrintFallback(pathname, token) {
+          const app = document.getElementById("app");
+          const payload = readOfflinePayload(token);
+
+          if (pathname.indexOf("/print/receipt/") === 0 && payload) {
+            app.innerHTML = receiptHtml(payload);
+            window.setTimeout(function () {
+              window.print();
+            }, 500);
+            return;
+          }
+
+          const title =
+            pathname.indexOf("/print/preprinted-bill/") === 0
+              ? "ไม่สามารถเปิดหน้า Epson route นี้แบบออฟไลน์ได้"
+              : "ไม่พบ payload สำหรับงานพิมพ์ออฟไลน์";
+          const detail =
+            pathname.indexOf("/print/preprinted-bill/") === 0
+              ? "การพิมพ์ Epson แบบออฟไลน์ที่รองรับจะทำงานจากหน้าขายโดยตรง ไม่ใช่จากการ reopen route นี้"
+              : "ต้องมี offlineToken ที่ยังอยู่ใน localStorage ของเครื่องนี้จึงจะพิมพ์ซ้ำได้";
+
+          app.innerHTML =
+            "<h1>" + escapeHtml(title) + "</h1>" +
+            "<p>" + escapeHtml(detail) + "</p>" +
+            '<div class="actions no-print"><a class="btn secondary" href="/sale">กลับหน้าขาย</a></div>';
+        }
+
+        const currentUrl = new URL(window.location.href);
+        const pathname = currentUrl.pathname;
+        const offlineToken = currentUrl.searchParams.get("offlineToken");
+
+        if (pathname.indexOf("/print/") === 0) {
+          renderPrintFallback(pathname, offlineToken);
+          return;
+        }
+
+        renderNavigationFallback(readOfflineSession());
+      })();
+    </script>
+  </body>
+</html>

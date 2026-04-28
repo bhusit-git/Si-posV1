@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>คู่มือการใช้งาน Super Ice POS</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue: #1e40af;
+    --blue-light: #dbeafe;
+    --blue-dark: #1e3a5f;
+    --gray: #6b7280;
+    --gray-light: #f3f4f6;
+    --gray-dark: #374151;
+    --green: #15803d;
+    --red: #dc2626;
+    --orange: #ea580c;
+    --border: #e5e7eb;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans Thai', 'Segoe UI', Tahoma, sans-serif;
+    font-size: 14px;
+    line-height: 1.8;
+    color: #1f2937;
+    background: #fff;
+    padding: 0;
+  }
+
+  /* ===== Cover Page ===== */
+  .cover {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+    color: #fff;
+    padding: 60px 40px;
+  }
+  .cover-logo {
+    width: 120px; height: 120px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 28px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 48px; font-weight: 700;
+    margin-bottom: 32px;
+    border: 3px solid rgba(255,255,255,0.3);
+  }
+  .cover h1 { font-size: 42px; font-weight: 700; margin-bottom: 8px; }
+  .cover h2 { font-size: 22px; font-weight: 400; opacity: 0.85; margin-bottom: 40px; }
+  .cover-meta { font-size: 14px; opacity: 0.7; line-height: 2; }
+
+  /* ===== Page Layout ===== */
+  .page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 48px;
+  }
+
+  /* ===== TOC ===== */
+  .toc { page-break-after: always; }
+  .toc h2 { font-size: 24px; color: var(--blue); margin-bottom: 24px; border-bottom: 3px solid var(--blue); padding-bottom: 8px; }
+  .toc-list { list-style: none; }
+  .toc-list li {
+    padding: 8px 0;
+    border-bottom: 1px dotted var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .toc-list li a { color: var(--blue); text-decoration: none; font-weight: 500; font-size: 15px; }
+  .toc-list li a:hover { text-decoration: underline; }
+  .toc-list .toc-num { font-weight: 600; color: var(--blue); min-width: 32px; display: inline-block; }
+
+  /* ===== Section Headings ===== */
+  .section { page-break-before: always; margin-top: 48px; }
+  .section:first-of-type { page-break-before: avoid; margin-top: 0; }
+
+  h2.section-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--blue);
+    border-bottom: 3px solid var(--blue);
+    padding-bottom: 8px;
+    margin-bottom: 24px;
+  }
+  h2.section-title .sec-num {
+    background: var(--blue);
+    color: #fff;
+    display: inline-block;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 36px;
+    font-size: 16px;
+    margin-right: 10px;
+    vertical-align: middle;
+  }
+
+  h3 {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--gray-dark);
+    margin: 20px 0 10px;
+  }
+
+  h4 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--blue-dark);
+    margin: 16px 0 8px;
+  }
+
+  p { margin-bottom: 12px; }
+
+  /* ===== Steps ===== */
+  ol.steps { padding-left: 0; list-style: none; counter-reset: step-counter; margin: 16px 0; }
+  ol.steps > li {
+    counter-increment: step-counter;
+    padding: 12px 16px 12px 56px;
+    position: relative;
+    margin-bottom: 8px;
+    background: var(--gray-light);
+    border-radius: 8px;
+    border-left: 4px solid var(--blue);
+  }
+  ol.steps > li::before {
+    content: counter(step-counter);
+    position: absolute;
+    left: 16px; top: 12px;
+    background: var(--blue);
+    color: #fff;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700;
+  }
+
+  /* ===== Tables ===== */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 13px;
+  }
+  th, td {
+    padding: 10px 12px;
+    text-align: left;
+    border: 1px solid var(--border);
+  }
+  th {
+    background: var(--blue);
+    color: #fff;
+    font-weight: 600;
+    font-size: 13px;
+  }
+  tr:nth-child(even) { background: #f9fafb; }
+
+  /* ===== Keyboard shortcuts ===== */
+  kbd {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-family: 'Noto Sans Thai', monospace;
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    box-shadow: 0 1px 0 #d1d5db;
+  }
+
+  /* ===== Screenshot Placeholders ===== */
+  .screenshot {
+    margin: 20px 0;
+    text-align: center;
+  }
+  .screenshot img {
+    max-width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .screenshot-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    background: #f0f4ff;
+    border: 2px dashed #93c5fd;
+    border-radius: 8px;
+    color: #3b82f6;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .screenshot figcaption, .screenshot-placeholder + .caption, .caption {
+    font-size: 12px;
+    color: var(--gray);
+    margin-top: 6px;
+    text-align: center;
+    font-style: italic;
+  }
+
+  /* ===== Tip / Note boxes ===== */
+  .tip {
+    padding: 14px 18px;
+    background: #ecfdf5;
+    border-left: 4px solid var(--green);
+    border-radius: 6px;
+    margin: 16px 0;
+    font-size: 13px;
+  }
+  .tip::before { content: "💡 เคล็ดลับ: "; font-weight: 600; }
+
+  .warning {
+    padding: 14px 18px;
+    background: #fef3c7;
+    border-left: 4px solid var(--orange);
+    border-radius: 6px;
+    margin: 16px 0;
+    font-size: 13px;
+  }
+  .warning::before { content: "⚠️ สำคัญ: "; font-weight: 600; }
+
+  .note {
+    padding: 14px 18px;
+    background: var(--blue-light);
+    border-left: 4px solid var(--blue);
+    border-radius: 6px;
+    margin: 16px 0;
+    font-size: 13px;
+  }
+  .note::before { content: "📌 หมายเหตุ: "; font-weight: 600; }
+
+  /* ===== Workflow Diagram ===== */
+  .workflow-flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 24px 0;
+  }
+  .wf-step {
+    background: var(--blue);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    text-align: center;
+    min-width: 120px;
+  }
+  .wf-arrow {
+    font-size: 24px;
+    color: var(--blue);
+    font-weight: 700;
+  }
+
+  /* ===== Badge ===== */
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .badge-blue { background: var(--blue-light); color: var(--blue); }
+  .badge-green { background: #dcfce7; color: var(--green); }
+  .badge-red { background: #fee2e2; color: var(--red); }
+  .badge-orange { background: #ffedd5; color: var(--orange); }
+  .badge-gray { background: #f3f4f6; color: var(--gray); }
+  .badge-purple { background: #f3e8ff; color: #7c3aed; }
+
+  /* ===== Print ===== */
+  @media print {
+    body { font-size: 12px; }
+    .cover { min-height: 100vh; }
+    .page { padding: 20px 24px; }
+    .section { page-break-before: always; }
+    .screenshot-placeholder { min-height: 100px; }
+    .tip, .warning, .note { background: #fff !important; }
+    a { color: inherit; text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================== COVER ============================== -->
+<div class="cover">
+  <div class="cover-logo">SI</div>
+  <h1>Super Ice POS</h1>
+  <h2>คู่มือการใช้งานระบบขายน้ำแข็ง</h2>
+  <div class="cover-meta">
+    เวอร์ชัน 2.1<br>
+    มีนาคม 2569
+  </div>
+</div>
+
+<!-- ============================== TOC ============================== -->
+<div class="page toc">
+  <h2>สารบัญ</h2>
+  <ol class="toc-list">
+    <li><a href="#sec1"><span class="toc-num">1.</span> ภาพรวมและการเข้าสู่ระบบ</a></li>
+    <li><a href="#sec2"><span class="toc-num">2.</span> หน้าจอหลักและการนำทาง</a></li>
+    <li><a href="#sec3"><span class="toc-num">3.</span> ขายน้ำแข็ง (Sale)</a></li>
+    <li><a href="#sec4"><span class="toc-num">4.</span> คืนสินค้า (Returns)</a></li>
+    <li><a href="#sec5"><span class="toc-num">5.</span> รายการขาย (Transactions)</a></li>
+    <li><a href="#sec6"><span class="toc-num">6.</span> ค้างชำระ (Credit)</a></li>
+    <li><a href="#sec7"><span class="toc-num">7.</span> ใบวางบิล (Invoice)</a></li>
+    <li><a href="#sec8"><span class="toc-num">8.</span> ติดตามถุง (Bags)</a></li>
+    <li><a href="#sec9"><span class="toc-num">9.</span> รายงาน (Reports)</a></li>
+    <li><a href="#sec10"><span class="toc-num">10.</span> จัดการลูกค้า (Customers)</a></li>
+    <li><a href="#sec11"><span class="toc-num">11.</span> ฟีเจอร์ผู้ดูแล (Admin)</a></li>
+    <li><a href="#sec12"><span class="toc-num">12.</span> บันทึกระบบ (Audit Log)</a></li>
+    <li><a href="#sec13"><span class="toc-num">13.</span> จอแสดงผลโรงงาน (Factory Display)</a></li>
+    <li><a href="#sec14"><span class="toc-num">14.</span> จำลองขั้นตอนงานทั้งระบบ (Workflow)</a></li>
+    <li><a href="#sec15"><span class="toc-num">15.</span> คีย์ลัดสำหรับใช้งาน</a></li>
+    <li><a href="#sec16"><span class="toc-num">16.</span> แนวทางก่อนใช้งานจริง (Go-Live)</a></li>
+  </ol>
+</div>
+
+<!-- ============================== SECTION 1 ============================== -->
+<div class="page">
+<div class="section" id="sec1">
+  <h2 class="section-title"><span class="sec-num">1</span> ภาพรวมและการเข้าสู่ระบบ</h2>
+
+  <p>Super Ice POS คือระบบจัดการการขายน้ำแข็งแบบครบวงจร ครอบคลุมตั้งแต่การขาย การจัดการค้างชำระ การติดตามถุง การออกใบวางบิล ไปจนถึงรายงานสรุป ทุกอย่างใช้งานผ่านเว็บเบราว์เซอร์</p>
+
+  <h3>การเข้าสู่ระบบ</h3>
+  <ol class="steps">
+    <li>เปิดเว็บเบราว์เซอร์ แล้วไปที่ URL ของระบบ</li>
+    <li>กรอก <strong>ชื่อผู้ใช้</strong> และ <strong>รหัสผ่าน</strong> ที่ได้รับ</li>
+    <li>กดปุ่ม <strong>"เข้าสู่ระบบ"</strong></li>
+  </ol>
+
+  <div class="screenshot">
+    <img src="screenshots/01-login.png" alt="หน้าเข้าสู่ระบบ">
+    <p class="caption">รูปที่ 1 — หน้าเข้าสู่ระบบ</p>
+  </div>
+
+  <h3>ประเภทผู้ใช้ (4 ระดับ)</h3>
+  <p>ระบบแบ่งสิทธิ์การใช้งานเป็น 4 ระดับ ตามบทบาทหน้าที่:</p>
+  <table>
+    <tr><th>ระดับ</th><th>ชื่อบทบาท</th><th>สิทธิ์การใช้งาน</th></tr>
+    <tr>
+      <td><span class="badge badge-red">1</span></td>
+      <td><strong>ผู้ดูแลระบบ (Admin)</strong></td>
+      <td>เข้าถึง<strong>ทุกฟีเจอร์</strong> รวมถึงจัดการสินค้า ผลิต/สต็อก จัดการผู้ใช้ และบันทึกระบบ (Audit Log)</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-blue">2</span></td>
+      <td><strong>สำนักงาน (Office)</strong></td>
+      <td>ใช้งานได้เกือบทั้งหมด ยกเว้นจัดการผู้ใช้ จัดการสินค้า และผลิต/สต็อก</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-orange">3</span></td>
+      <td><strong>ผู้จัดการ (Manager)</strong></td>
+      <td>ขายน้ำแข็ง รายการขาย ค้างชำระ รายงาน แดชบอร์ด</td>
+    </tr>
+    <tr>
+      <td><span class="badge badge-gray">4</span></td>
+      <td><strong>โรงงาน (Factory)</strong></td>
+      <td>ดูจอแสดงผลโรงงาน (Factory Display) เท่านั้น — จะถูกส่งไปหน้าจอโรงงานอัตโนมัติเมื่อ Login</td>
+    </tr>
+  </table>
+
+  <div class="note">ผู้ใช้ระดับ Manager จะเข้าสู่หน้าจอแบบง่าย (มีแท็บด้านล่าง) ส่วนผู้ดูแลและสำนักงานจะเข้าสู่แดชบอร์ดเต็มรูปแบบ ผู้ใช้ระดับ Factory จะถูกส่งไปหน้าจอโรงงานโดยตรง</div>
+
+  <h3>กติกาสำคัญในการใช้งานจริง</h3>
+  <ul>
+    <li><strong>ใช้ชื่อผู้ใช้ของตนเองเท่านั้น</strong> ห้ามใช้บัญชีร่วมกัน เพื่อให้ Audit Log ระบุผู้ทำรายการได้ถูกต้อง</li>
+    <li><strong>ห้ามเดา</strong> ถ้าไม่แน่ใจเรื่องลูกค้า ราคา ยอดรับ หรือประเภทบิล ให้หยุดถามหัวหน้าหรือผู้มีสิทธิ์ก่อนบันทึก</li>
+    <li><strong>บิลผิดต้องแจ้ง ไม่แก้เองนอกขั้นตอน</strong> โดยเฉพาะการยกเลิกบิล การย้อนวันที่ และการแก้ราคาลูกค้า</li>
+    <li><strong>อุปกรณ์มีปัญหาต้องรายงานทันที</strong> เช่น อินเทอร์เน็ตหลุด เครื่องพิมพ์คลาดตำแหน่ง หรือจอโรงงานไม่อัปเดต</li>
+  </ul>
+
+  <div class="warning">ข้อมูลทั้งหมดผูกกันทั้งระบบ เมื่อบันทึกรายการขายแล้ว ข้อมูลจะไหลต่อไปยังค้างชำระ จอโรงงาน รายงาน และบันทึกระบบ จึงควรตรวจสอบก่อนกดบันทึกทุกครั้ง</div>
+</div>
+
+<!-- ============================== SECTION 2 ============================== -->
+<div class="section" id="sec2">
+  <h2 class="section-title"><span class="sec-num">2</span> หน้าจอหลักและการนำทาง</h2>
+
+  <h3>แถบเมนูด้านข้าง (Sidebar)</h3>
+  <p>หลังเข้าสู่ระบบ จะเห็นแถบเมนูทางซ้ายมือ ประกอบด้วย:</p>
+
+  <table>
+    <tr><th>เมนู</th><th>คำอธิบาย</th><th>สิทธิ์</th></tr>
+    <tr><td>แดชบอร์ด</td><td>ภาพรวมยอดขายและกิจกรรมวันนี้</td><td>Admin, Office, Manager</td></tr>
+    <tr><td>ขายน้ำแข็ง</td><td>บันทึกการขาย</td><td>Admin, Office, Manager</td></tr>
+    <tr><td>คืนสินค้า</td><td>บันทึกการคืนสินค้า/ถุง</td><td>Admin, Office</td></tr>
+    <tr><td>รายการขาย</td><td>ประวัติรายการทั้งหมด</td><td>Admin, Office, Manager</td></tr>
+    <tr><td>ใบวางบิล</td><td>ออกใบวางบิลลูกค้า</td><td>Admin, Office</td></tr>
+    <tr><td>ค้างชำระ</td><td>ดูและจัดการยอดค้าง</td><td>Admin, Office, Manager</td></tr>
+    <tr><td>ลูกค้า</td><td>จัดการข้อมูลลูกค้า</td><td>Admin, Office</td></tr>
+    <tr><td>จัดการสินค้า</td><td>เพิ่ม/แก้ไขสินค้า</td><td><span class="badge badge-red">Admin</span></td></tr>
+    <tr><td>ผลิต/สต็อก</td><td>บันทึกการผลิตและดูสต็อก</td><td><span class="badge badge-red">Admin</span></td></tr>
+    <tr><td>ติดตามถุง</td><td>ยอดถุงค้างรับ</td><td>Admin, Office, Manager</td></tr>
+    <tr><td>รายงาน</td><td>รายงานสรุปหลากหลายมุมมอง</td><td>Admin, Office</td></tr>
+    <tr><td>บันทึกระบบ</td><td>ดูประวัติการกระทำทั้งหมดในระบบ (Audit Log)</td><td><span class="badge badge-red">Admin</span></td></tr>
+    <tr><td>จอโรงงาน</td><td>ลิงก์ไปยังจอแสดงผลโรงงาน (เปิดแท็บใหม่)</td><td>Admin, Office, Manager, Factory</td></tr>
+    <tr><td>ตั้งค่า</td><td>เปลี่ยนรหัสผ่าน จัดการผู้ใช้</td><td>ทุกระดับ*</td></tr>
+  </table>
+  <p style="font-size:12px; color: var(--gray);">* ผู้ใช้ทุกระดับเปลี่ยนรหัสผ่านตัวเองได้ แต่สร้าง/ลบผู้ใช้คนอื่นต้องเป็น Admin</p>
+
+  <div class="screenshot">
+    <img src="screenshots/02-dashboard-sidebar.png" alt="แดชบอร์ดและแถบเมนูด้านข้าง">
+    <p class="caption">รูปที่ 2 — แดชบอร์ดและแถบเมนูด้านข้าง</p>
+  </div>
+
+  <h3>แดชบอร์ดที่อัปเกรด</h3>
+  <p>แดชบอร์ดใหม่มีฟีเจอร์เพิ่มเติมเพื่อให้ข้อมูลมากขึ้น:</p>
+  <ul>
+    <li><strong>ลูกศรเปรียบเทียบ</strong> — ยอดขายและเงินสดรับจะแสดงลูกศรขึ้น/ลง เทียบกับเมื่อวาน พร้อม % เปลี่ยนแปลง</li>
+    <li><strong>อายุหนี้ค้างชำระ</strong> — การ์ดแสดงยอดหนี้แยกตามอายุ (0-7, 8-14, 15-30, 30+ วัน) เพื่อติดตามหนี้เก่า</li>
+    <li><strong>กิจกรรมผู้ใช้</strong> — แสดงยอดขายและยอดยกเลิกของพนักงานแต่ละคนวันนี้ พร้อมเตือนถ้าอัตรายกเลิกสูง</li>
+    <li><strong>กราฟยอดขายตามสินค้า</strong> — กราฟเส้นแสดงยอดขายแยกตามชนิดสินค้า 7 วัน</li>
+    <li><strong>กราฟเวลาขาย</strong> — กราฟแท่งแสดงช่วงเวลาขายดี (รายชั่วโมง)</li>
+    <li><strong>มุมมองรายสัปดาห์</strong> — สลับได้ระหว่าง 7 วันกับ 4 สัปดาห์</li>
+  </ul>
+
+  <h3>โหมดมืด (Dark Mode)</h3>
+  <p>กดปุ่มที่ด้านล่างของ Sidebar เพื่อสลับระหว่างโหมดสว่างและโหมดมืด</p>
+
+  <h3>สลับภาษา TH / EN (Main Shell)</h3>
+  <p>ที่ส่วนล่างของ Sidebar (เหนือโปรไฟล์ผู้ใช้) จะมีปุ่ม <strong>TH</strong> และ <strong>EN</strong> สำหรับสลับภาษาเมนูหลักของระบบ:</p>
+  <ul>
+    <li><strong>ค่าเริ่มต้นเป็นภาษาไทย (TH)</strong></li>
+    <li>ภาษาอังกฤษ (EN) จะเปลี่ยนเฉพาะข้อความในส่วนโครงหลัก เช่น เมนูด้านซ้าย ป้ายบทบาท ปุ่มออกจากระบบ</li>
+    <li>ระบบจะจำค่าภาษาที่เลือกไว้ในเบราว์เซอร์เครื่องนั้นอัตโนมัติ</li>
+  </ul>
+
+  <h3>Command Palette — ค้นหาเร็ว</h3>
+  <p>กด <kbd>Ctrl</kbd>+<kbd>K</kbd> (หรือ <kbd>Cmd</kbd>+<kbd>K</kbd> บน Mac) เพื่อเปิดกล่องค้นหาเร็ว สามารถค้นหาชื่อหน้า ชื่อลูกค้า หรือคำสั่งได้ทันที</p>
+
+  <h3>ป้ายแจ้งเตือน (Badges)</h3>
+  <p>เมนู <strong>ค้างชำระ</strong> และ <strong>ติดตามถุง</strong> จะแสดงตัวเลขสีแดงเมื่อมีลูกค้าค้างชำระเกิน 60 วัน หรือถุงค้างมากผิดปกติ</p>
+</div>
+
+<!-- ============================== SECTION 3 ============================== -->
+<div class="section" id="sec3">
+  <h2 class="section-title"><span class="sec-num">3</span> ขายน้ำแข็ง (Sale)</h2>
+
+  <p>หน้าขายเป็นหัวใจหลักของระบบ ใช้บันทึกรายการขายประจำวัน</p>
+
+  <h3>ขั้นตอนการขาย</h3>
+  <ol class="steps">
+    <li><strong>ค้นหาลูกค้า</strong> — พิมพ์ชื่อหรือรหัสลูกค้าในช่องค้นหาด้านบน แล้วเลือกจากรายการที่แสดง</li>
+    <li><strong>ระบบโหลดราคาอัตโนมัติ</strong> — สินค้าและราคาเฉพาะลูกค้าจะแสดงขึ้นมา (ราคาแก้ไขไม่ได้ ตั้งค่าจากหน้าลูกค้า)</li>
+    <li><strong>กรอกจำนวน</strong> — ใส่จำนวนสินค้าแต่ละรายการที่ลูกค้าสั่ง</li>
+    <li><strong>เพิ่มสินค้านอกรายการ</strong> (ถ้ามี) — เลือกสินค้าจาก dropdown "เพิ่มสินค้า" แล้วกำหนดราคาเอง ระบบจะจดจำราคานี้ให้อัตโนมัติ</li>
+    <li><strong>บันทึกถุง</strong> — ถุงออกจะนับจากสินค้าที่มีถุง สามารถระบุจำนวนถุงคืนได้ในช่อง "ถุงรับคืน"</li>
+    <li><strong>ระบุตำแหน่ง</strong> — กรอกบ่อ/แถว/ช่อง (ถ้ามี)</li>
+    <li><strong>เลือกสถานะการชำระ</strong> — กด <span class="badge badge-green">ชำระแล้ว</span> หรือ <span class="badge badge-red">ค้างชำระ</span></li>
+    <li><strong>บันทึก</strong> — กดปุ่ม <strong>"บันทึกรายการ"</strong> หรือกด <kbd>Enter</kbd></li>
+  </ol>
+
+  <div class="screenshot">
+    <img src="screenshots/03-sale.png" alt="หน้าขายน้ำแข็ง">
+    <p class="caption">รูปที่ 3 — หน้าขายน้ำแข็ง</p>
+  </div>
+
+  <h3>ฟีเจอร์เพิ่มเติม</h3>
+  <table>
+    <tr><th>ฟีเจอร์</th><th>รายละเอียด</th></tr>
+    <tr>
+      <td><strong>สั่งซ้ำรายการล่าสุด</strong></td>
+      <td>กดปุ่ม "สั่งซ้ำ" เพื่อดึงรายการสั่งซื้อล่าสุดของลูกค้ามาเติมให้อัตโนมัติ</td>
+    </tr>
+    <tr>
+      <td><strong>พิมพ์อัตโนมัติ</strong></td>
+      <td>เปิด/ปิดปุ่มรูปเครื่องพิมพ์ — เมื่อเปิด ระบบจะเปิดหน้าต่างใบเสร็จให้พิมพ์ทันทีหลังบันทึก</td>
+    </tr>
+    <tr>
+      <td><strong>พิมพ์ใบเสร็จย้อนหลัง</strong></td>
+      <td>หลังบันทึกเสร็จ จะมีปุ่ม "พิมพ์ใบเสร็จ" ให้กดพิมพ์ได้</td>
+    </tr>
+    <tr>
+      <td><strong>ล้างข้อมูล</strong></td>
+      <td>กด "ล้างข้อมูล" หรือ <kbd>Escape</kbd> เพื่อเริ่มต้นใหม่</td>
+    </tr>
+    <tr>
+      <td><strong>โหมดออฟไลน์</strong></td>
+      <td>ถ้าอินเทอร์เน็ตขาด ระบบจะเก็บรายการขายไว้ในเครื่อง แล้วส่งอัตโนมัติเมื่อเน็ตกลับมา</td>
+    </tr>
+  </table>
+
+  <div class="tip">กด <kbd>F2</kbd> เพื่อกระโดดไปช่องค้นหาลูกค้าได้ทันที ไม่ต้องใช้เมาส์</div>
+
+  <div class="note">หน้าขายรองรับการทำงานแบบออฟไลน์ — เมื่ออินเทอร์เน็ตหลุด ระบบจะเก็บข้อมูลลูกค้าและสินค้าไว้ในเครื่อง พร้อมเก็บรายการขายเป็นคิว รอส่งเมื่อเชื่อมต่อได้ ไม่ต้องกังวลเรื่องข้อมูลหาย</div>
+</div>
+
+<!-- ============================== SECTION 4 ============================== -->
+<div class="section" id="sec4">
+  <h2 class="section-title"><span class="sec-num">4</span> คืนสินค้า (Returns)</h2>
+
+  <p>ใช้เมื่อลูกค้าคืนสินค้าหรือถุง</p>
+
+  <h3>ขั้นตอนการคืนสินค้า</h3>
+  <ol class="steps">
+    <li><strong>ค้นหาลูกค้า</strong> — เหมือนหน้าขาย</li>
+    <li><strong>เลือกบิลอ้างอิง</strong> (ไม่บังคับ) — ระบบจะแสดงรายการขายล่าสุด สามารถเลือกเพื่อดึงรายการสินค้ามา</li>
+    <li><strong>กรอกจำนวนคืน</strong> — ใส่จำนวนสินค้าที่จะคืนในแต่ละรายการ (เริ่มจาก 0 ต้องกรอกเอง)</li>
+    <li><strong>คืนถุง</strong> — กรอกจำนวนถุงคืนในช่อง "ถุงรับคืน"</li>
+    <li><strong>บันทึก</strong> — กดปุ่ม "บันทึกการคืน"</li>
+  </ol>
+
+  <div class="note">ถ้าเลือกบิลอ้างอิง ระบบจะตรวจสอบจำนวนคืนไม่ให้เกินจำนวนในบิลต้นฉบับ และจะแสดงข้อความแจ้งเตือนสาเหตุอย่างชัดเจนเมื่อบันทึกไม่ผ่าน</div>
+
+  <div class="screenshot">
+    <img src="screenshots/04-returns.png" alt="หน้าคืนสินค้า">
+    <p class="caption">รูปที่ 4 — หน้าคืนสินค้า</p>
+  </div>
+
+  <div class="note">รายการคืนจะถูกบันทึกเป็นธุรกรรมติดลบ (ยอดเงินติดลบ) เพื่อให้ตรวจสอบได้ง่ายในรายงาน</div>
+</div>
+
+<!-- ============================== SECTION 5 ============================== -->
+<div class="section" id="sec5">
+  <h2 class="section-title"><span class="sec-num">5</span> รายการขาย (Transactions)</h2>
+
+  <p>ดูประวัติรายการขายทั้งหมด กรองตามช่วงเวลา สถานะ หรือลูกค้า</p>
+
+  <h3>ตัวกรอง</h3>
+  <table>
+    <tr><th>ตัวกรอง</th><th>ตัวเลือก</th></tr>
+    <tr><td>ช่วงเวลา</td><td>วันนี้ / สัปดาห์นี้ / เดือนนี้ / เลือกเอง</td></tr>
+    <tr><td>สถานะ</td><td>ทั้งหมด / ชำระแล้ว / ค้างชำระ / บางส่วน / ยกเลิก</td></tr>
+    <tr><td>ค้นหา</td><td>พิมพ์ชื่อลูกค้า</td></tr>
+  </table>
+
+  <h3>สิ่งที่ทำได้</h3>
+  <ul>
+    <li>กดแถวรายการเพื่อ <strong>ดูรายละเอียด</strong> (สินค้า จำนวน ราคา)</li>
+    <li>กดปุ่ม <strong>"พิมพ์ใบเสร็จ"</strong> เพื่อพิมพ์</li>
+    <li>กดปุ่ม <strong>"ยกเลิกบิล"</strong> เพื่อ void รายการ — <strong>ต้องระบุเหตุผล</strong> (ถุงจะถูกคืนอัตโนมัติ)</li>
+    <li>ดูยอดสรุป (จำนวนรายการ ยอดรวม ชำระแล้ว ค้างชำระ) ที่ด้านบน</li>
+  </ul>
+
+  <div class="screenshot">
+    <img src="screenshots/05-transactions.png" alt="ประวัติรายการขาย">
+    <p class="caption">รูปที่ 5 — ประวัติรายการขาย</p>
+  </div>
+
+  <div class="warning">การยกเลิกบิลไม่สามารถย้อนกลับได้ รายการจะถูกเปลี่ยนสถานะเป็น "ยกเลิก" ถาวร และระบบจะบันทึกชื่อผู้ยกเลิกพร้อมเหตุผลไว้ในบันทึกระบบ (Audit Log)</div>
+</div>
+
+<!-- ============================== SECTION 6 ============================== -->
+<div class="section" id="sec6">
+  <h2 class="section-title"><span class="sec-num">6</span> ค้างชำระ (Credit)</h2>
+
+  <p>ติดตามลูกค้าที่มียอดค้างชำระ พร้อมระบบจัดการเก็บเงิน</p>
+
+  <h3>สิ่งที่เห็นในหน้านี้</h3>
+  <ul>
+    <li><strong>สรุปยอดรวม</strong> — จำนวนลูกค้าค้าง, ยอดค้างทั้งหมด</li>
+    <li><strong>ตารางลูกค้า</strong> — ชื่อ, จำนวนบิลค้าง, ยอดค้างรวม, อายุหนี้ (0-30 / 31-60 / 60+ วัน)</li>
+  </ul>
+
+  <h3>การรับชำระ</h3>
+  <ol class="steps">
+    <li><strong>กดชื่อลูกค้า</strong> ที่ต้องการรับชำระ — จะเปิด Dialog แสดงบิลค้างทั้งหมด</li>
+    <li><strong>บันทึกชำระรายบิล</strong> — กดปุ่ม "ชำระ" ที่บิลนั้นๆ แล้วใส่จำนวนเงิน</li>
+    <li><strong>หรือ "ชำระทั้งหมด"</strong> — กดปุ่มนี้เพื่อชำระทุกบิลพร้อมกัน (ต้องยืนยันก่อน)</li>
+  </ol>
+
+  <h3>ใบแจ้งยอดบัญชี (Statement)</h3>
+  <p>จากหน้า <strong>ค้างชำระ</strong> สามารถกดปุ่ม <strong>"ยอดบัญชี"</strong> เพื่อเปิดใบแจ้งยอดลูกค้ารูปแบบบัญชีเดินสะพัด (Bank-statement style) สำหรับพิมพ์หรือบันทึก PDF ได้ทันที</p>
+
+  <div class="screenshot">
+    <img src="screenshots/06-credit.png" alt="หน้าค้างชำระ">
+    <p class="caption">รูปที่ 6 — หน้าค้างชำระ</p>
+  </div>
+
+  <h3>ตัวกรองช่วงเวลา</h3>
+  <p>สามารถเลือกดูเฉพาะบิลค้างในช่วงวันที่ที่ต้องการ หรือเลือก "ทั้งหมด" เพื่อดูทุกรายการ</p>
+
+  <div class="tip">คอลัมน์อายุหนี้ช่วยให้เห็นว่าลูกค้ารายไหนค้างนานที่สุด เพื่อจัดลำดับความสำคัญในการติดตาม นอกจากนี้ แดชบอร์ดมีการ์ด "อายุหนี้ค้างชำระ" แยกตามช่วงอายุ เพื่อให้เห็นภาพรวมได้ทันที</div>
+</div>
+
+<!-- ============================== SECTION 7 ============================== -->
+<div class="section" id="sec7">
+  <h2 class="section-title"><span class="sec-num">7</span> ใบวางบิล (Invoice)</h2>
+
+  <p>ออกใบวางบิลสรุปรายการขายให้ลูกค้า สำหรับวางบิลเก็บเงิน</p>
+
+  <h3>ขั้นตอน</h3>
+  <ol class="steps">
+    <li><strong>เลือกลูกค้า</strong> — ค้นหาและเลือกจากรายการ</li>
+    <li><strong>กำหนดช่วงวันที่</strong> — เลือกวันเริ่มต้นและสิ้นสุด</li>
+    <li><strong>ดูตัวอย่าง</strong> — ระบบจะแสดงรายการขายทั้งหมดในช่วงนั้น พร้อมสรุปยอด (ขาย, ชำระแล้ว, ค้าง, ถุง)</li>
+    <li><strong>พิมพ์</strong> — กดปุ่ม "พิมพ์ใบวางบิล" จะเปิดหน้าพิมพ์ที่ปรับแต่งสำหรับกระดาษ A4</li>
+  </ol>
+
+  <div class="screenshot">
+    <img src="screenshots/07-invoice.png" alt="หน้าออกใบวางบิล">
+    <p class="caption">รูปที่ 7 — หน้าออกใบวางบิล</p>
+  </div>
+
+  <h3>พิมพ์หลายลูกค้า (Batch)</h3>
+  <p>กดปุ่ม <strong>"พิมพ์ทั้งหมด"</strong> เพื่อพิมพ์ใบวางบิลของลูกค้าหลายรายพร้อมกัน ระบบจะแบ่งหน้าให้อัตโนมัติ</p>
+</div>
+
+<!-- ============================== SECTION 8 ============================== -->
+<div class="section" id="sec8">
+  <h2 class="section-title"><span class="sec-num">8</span> ติดตามถุง (Bags)</h2>
+
+  <p>ระบบติดตามถุงน้ำแข็งที่ส่งออกไปกับลูกค้า และถุงที่รับคืนกลับมา</p>
+
+  <h3>แท็บข้อมูล</h3>
+  <table>
+    <tr><th>แท็บ</th><th>แสดงอะไร</th></tr>
+    <tr><td>ยอดรวมลูกค้า</td><td>สรุปจำนวนถุงค้างของแต่ละลูกค้า</td></tr>
+    <tr><td>ตามชนิดสินค้า</td><td>ถุงค้างแยกตามลูกค้าและชนิดสินค้า</td></tr>
+  </table>
+
+  <h3>ดูประวัติถุง</h3>
+  <p>กดชื่อลูกค้าเพื่อดู <strong>ประวัติถุง (Ledger)</strong> ทั้งหมด แสดงทุกรายการถุงออก/คืน/ปรับ พร้อมวันที่</p>
+
+  <h3>ปรับยอดถุง (Admin)</h3>
+  <p>ผู้ดูแลสามารถกดปุ่ม <strong>"ปรับยอด"</strong> เพื่อเพิ่มหรือลดจำนวนถุงด้วยตนเอง พร้อมระบุหมายเหตุ</p>
+
+  <div class="screenshot">
+    <img src="screenshots/08-bags.png" alt="หน้าติดตามถุง">
+    <p class="caption">รูปที่ 8 — หน้าติดตามถุง</p>
+  </div>
+</div>
+
+<!-- ============================== SECTION 9 ============================== -->
+<div class="section" id="sec9">
+  <h2 class="section-title"><span class="sec-num">9</span> รายงาน (Reports)</h2>
+
+  <p>ระบบรายงานมีหลายมุมมอง เข้าถึงผ่านแท็บต่างๆ ในหน้าเดียว ทุกรายงานสามารถ <strong>ส่งออกเป็น CSV/Excel</strong> และ <strong>พิมพ์</strong> ได้</p>
+
+  <h3>แท็บรายงาน</h3>
+  <table>
+    <tr><th>แท็บ</th><th>ข้อมูลที่แสดง</th><th>ใช้เมื่อ</th></tr>
+    <tr>
+      <td><strong>สรุปรายวัน</strong></td>
+      <td>จำนวนรายการและยอดขายแยกตามวัน</td>
+      <td>ดูภาพรวมยอดขายรายวัน</td>
+    </tr>
+    <tr>
+      <td><strong>ตามสินค้า</strong></td>
+      <td>จำนวนขาย/คืน/สุทธิ ของแต่ละสินค้า</td>
+      <td>ดูว่าสินค้าตัวไหนขายดี</td>
+    </tr>
+    <tr>
+      <td><strong>ตามลูกค้า</strong></td>
+      <td>จำนวนรายการและยอดซื้อของแต่ละลูกค้า</td>
+      <td>วิเคราะห์ลูกค้ารายใหญ่</td>
+    </tr>
+    <tr>
+      <td><strong>เงินสด</strong></td>
+      <td>ยอดขาย vs ชำระแล้ว vs ค้าง แยกตามวัน</td>
+      <td>กระทบยอดเงินสดรายวัน</td>
+    </tr>
+    <tr>
+      <td><strong>ราคาแยก</strong></td>
+      <td>ราคาต่อหน่วยของแต่ละลูกค้า×สินค้า</td>
+      <td>ตรวจสอบว่าลูกค้าไหนได้ราคาเท่าไหร่</td>
+    </tr>
+    <tr>
+      <td><strong>รายเดือน</strong></td>
+      <td>สรุปรายเดือน พร้อมกราฟ</td>
+      <td>วิเคราะห์แนวโน้มรายเดือน พิมพ์รายงานประจำเดือน</td>
+    </tr>
+    <tr>
+      <td><strong>ประวัติ</strong></td>
+      <td>เทรนด์ยอดขาย, พฤติกรรมลูกค้า, Top 10 ลูกค้า</td>
+      <td>วิเคราะห์ระยะยาว (เทรนด์, ค่าเฉลี่ยเคลื่อนที่ 7 วัน)</td>
+    </tr>
+  </table>
+
+  <div class="screenshot">
+    <img src="screenshots/09a-reports-daily.png" alt="รายงานสรุปรายวัน">
+    <p class="caption">รูปที่ 9a — รายงานสรุปรายวัน</p>
+  </div>
+
+  <div class="screenshot">
+    <img src="screenshots/09b-reports-product.png" alt="รายงานตามสินค้า">
+    <p class="caption">รูปที่ 9b — รายงานตามสินค้า (Pie Chart)</p>
+  </div>
+
+  <h3>การส่งออกข้อมูล</h3>
+  <p>ทุกแท็บมีปุ่ม <strong>"ส่งออก CSV"</strong> ที่ด้านบน กดแล้วไฟล์จะดาวน์โหลดทันที สามารถเปิดใน Excel ได้ นอกจากนี้ยังสามารถกดปุ่ม <strong>"ส่งออก Excel"</strong> เพื่อดาวน์โหลดเป็นไฟล์ .xlsx สำหรับรายงานสรุปรายวัน รายงานเครดิต และรายงานลูกค้า</p>
+
+  <div class="tip">แท็บ "รายเดือน" มีปุ่ม "พิมพ์รายงาน" แยกต่างหาก ซึ่งจะจัดหน้าให้สวยงามสำหรับเอกสาร A4</div>
+</div>
+
+<!-- ============================== SECTION 10 ============================== -->
+<div class="section" id="sec10">
+  <h2 class="section-title"><span class="sec-num">10</span> จัดการลูกค้า (Customers)</h2>
+
+  <h3>รายชื่อลูกค้า</h3>
+  <p>หน้า <strong>"ลูกค้า"</strong> แสดงรายชื่อทั้งหมด สามารถ:</p>
+  <ul>
+    <li>ค้นหาด้วยชื่อหรือรหัส</li>
+    <li>เรียงลำดับตามรหัส, ชื่อ, สถานะเครดิต, ถุงค้าง</li>
+    <li>กดเข้าไปดูรายละเอียดลูกค้าแต่ละราย</li>
+  </ul>
+
+  <h3>หน้ารายละเอียดลูกค้า</h3>
+  <p>แสดงข้อมูลลูกค้า ราคาสินค้าเฉพาะราย ประวัติการซื้อ และประวัติถุง ทั้งหมดในหน้าเดียว</p>
+
+  <h3>ตารางราคา (Price Matrix)</h3>
+  <p>หน้า <strong>"ลูกค้า → ตารางราคา"</strong> แสดงตารางราคาแบบ Excel — ลูกค้าทุกรายเป็นแถว สินค้าทุกชนิดเป็นคอลัมน์ สามารถ:</p>
+  <ul>
+    <li>แก้ไขราคาได้เลยในตาราง (เซลล์ที่แก้จะเปลี่ยนเป็นสีเหลือง)</li>
+    <li>กดปุ่ม <strong>"บันทึก X รายการ"</strong> เพื่อบันทึกทุกการแก้ไขพร้อมกัน</li>
+    <li>ค้นหาและเรียงลำดับได้</li>
+  </ul>
+
+  <div class="screenshot">
+    <img src="screenshots/10-price-matrix.png" alt="ตารางราคาลูกค้า×สินค้า">
+    <p class="caption">รูปที่ 10 — ตารางราคาลูกค้า×สินค้า</p>
+  </div>
+</div>
+
+<!-- ============================== SECTION 11 ============================== -->
+<div class="section" id="sec11">
+  <h2 class="section-title"><span class="sec-num">11</span> ฟีเจอร์ผู้ดูแลระบบ (Admin)</h2>
+
+  <p>เมนูเหล่านี้เห็นเฉพาะผู้ดูแลระบบ (Admin) เท่านั้น</p>
+
+  <h3>จัดการสินค้า</h3>
+  <ul>
+    <li>เพิ่ม/แก้ไขชนิดสินค้า (ชื่อ, สินค้ามีถุงหรือไม่, เปิด/ปิดใช้งาน)</li>
+    <li>จัดลำดับการแสดงผล</li>
+  </ul>
+
+  <h3>ผลิต/สต็อก</h3>
+  <ul>
+    <li><strong>สต็อกปัจจุบัน</strong> — แสดงยอดผลิต - ขาย + คืน = สต็อกคงเหลือ ของแต่ละสินค้า</li>
+    <li><strong>บันทึกการผลิต</strong> — เลือกสินค้า กรอกจำนวน พร้อมหมายเหตุ</li>
+    <li><strong>ประวัติการผลิต</strong> — ดูรายการผลิตย้อนหลัง</li>
+  </ul>
+
+  <h3>จัดการผู้ใช้ (ตั้งค่า)</h3>
+  <ul>
+    <li>สร้างผู้ใช้ใหม่ กำหนดชื่อ รหัสผ่าน และบทบาท (4 ระดับ: Admin, Office, Manager, Factory)</li>
+    <li>เปลี่ยนรหัสผ่านผู้ใช้คนอื่น</li>
+    <li>ลบผู้ใช้ (ลบตัวเองไม่ได้)</li>
+  </ul>
+
+  <h3>สำรองข้อมูล</h3>
+  <p>ผู้ดูแลสามารถดาวน์โหลดข้อมูลทั้งหมดเป็นไฟล์ JSON ได้จากระบบ สำหรับสำรองข้อมูล</p>
+
+  <div class="screenshot">
+    <img src="screenshots/11-settings.png" alt="หน้าตั้งค่าและจัดการผู้ใช้">
+    <p class="caption">รูปที่ 11 — หน้าตั้งค่าและจัดการผู้ใช้</p>
+  </div>
+</div>
+
+<!-- ============================== SECTION 12: AUDIT LOG ============================== -->
+<div class="section" id="sec12">
+  <h2 class="section-title"><span class="sec-num">12</span> บันทึกระบบ (Audit Log)</h2>
+
+  <p>หน้า <strong>บันทึกระบบ</strong> แสดงประวัติการกระทำทั้งหมดในระบบ เพื่อใช้ตรวจสอบว่า <strong>ใครทำอะไร เมื่อไหร่ กับข้อมูลอะไร</strong> เข้าถึงได้เฉพาะ <span class="badge badge-red">Admin</span> เท่านั้น</p>
+
+  <h3>ข้อมูลที่แสดง</h3>
+  <table>
+    <tr><th>คอลัมน์</th><th>คำอธิบาย</th></tr>
+    <tr><td>วันที่/เวลา</td><td>เวลาที่เกิดเหตุการณ์</td></tr>
+    <tr><td>ผู้ใช้</td><td>ชื่อผู้ใช้ที่ทำรายการ</td></tr>
+    <tr><td>การกระทำ</td><td>สิ่งที่ทำ เช่น สร้างรายการขาย, ยกเลิกบิล, แก้ไขลูกค้า</td></tr>
+    <tr><td>ประเภท</td><td>ชนิดของข้อมูลที่ถูกเปลี่ยน (transaction, customer, production, bag, user)</td></tr>
+    <tr><td>รหัส</td><td>รหัสของข้อมูลที่เกี่ยวข้อง (เช่น เลขที่บิล, รหัสลูกค้า)</td></tr>
+    <tr><td>รายละเอียด</td><td>ข้อมูลเพิ่มเติม เช่น จำนวนเงิน, เหตุผลยกเลิก, ราคาที่เปลี่ยน</td></tr>
+  </table>
+
+  <h3>ตัวกรอง</h3>
+  <ul>
+    <li><strong>ประเภทข้อมูล</strong> — เลือกดูเฉพาะ transaction, customer, production, bag, user หรือดูทั้งหมด</li>
+    <li><strong>ช่วงวันที่</strong> — เลือกวันเริ่มต้นและสิ้นสุด</li>
+  </ul>
+
+  <h3>การกระทำที่ถูกบันทึก</h3>
+  <table>
+    <tr><th>ประเภท</th><th>การกระทำที่บันทึก</th></tr>
+    <tr><td>Transaction (รายการขาย)</td><td>สร้างรายการขาย, ยกเลิกบิล (พร้อมเหตุผล), บันทึกชำระเงิน</td></tr>
+    <tr><td>Customer (ลูกค้า)</td><td>เพิ่มลูกค้าใหม่, แก้ไขข้อมูลลูกค้า, แก้ไขราคา</td></tr>
+    <tr><td>Production (การผลิต)</td><td>บันทึกการผลิต</td></tr>
+    <tr><td>Bag (ถุง)</td><td>ปรับยอดถุงด้วยตนเอง</td></tr>
+    <tr><td>User (ผู้ใช้)</td><td>สร้างผู้ใช้ใหม่, ลบผู้ใช้, เปลี่ยนรหัสผ่าน</td></tr>
+  </table>
+
+  <div class="tip">ใช้บันทึกระบบเพื่อตรวจสอบกรณีที่ยอดไม่ตรง สามารถดูได้ว่าใครยกเลิกบิล เมื่อไหร่ และด้วยเหตุผลอะไร</div>
+
+  <div class="warning">บันทึกระบบเป็นข้อมูลอ่านอย่างเดียว ไม่สามารถลบหรือแก้ไขได้ เพื่อความโปร่งใสในการตรวจสอบ</div>
+</div>
+
+<!-- ============================== SECTION 13 ============================== -->
+<div class="section" id="sec13">
+  <h2 class="section-title"><span class="sec-num">13</span> จอแสดงผลโรงงาน (Factory Display)</h2>
+
+  <p>ระบบจอแสดงผลสำหรับติดตั้งบนทีวีหรือหน้าจอในโรงงาน <strong>ไม่ต้อง Login</strong> เปิดจากเบราว์เซอร์ได้เลย</p>
+
+  <h3>หน้าจอที่มี</h3>
+  <table>
+    <tr><th>หน้า</th><th>URL</th><th>ใช้งาน</th></tr>
+    <tr>
+      <td><strong>คิวสั่งซื้อ</strong></td>
+      <td>/display</td>
+      <td>แสดงออเดอร์ปัจจุบันที่ต้องจัด (FIFO) อัพเดตอัตโนมัติ</td>
+    </tr>
+    <tr>
+      <td><strong>สรุปวัน</strong></td>
+      <td>/display/summary</td>
+      <td>แสดงจำนวนออเดอร์ทั้งหมด จัดแล้ว รอจัด</td>
+    </tr>
+    <tr>
+      <td><strong>บอร์ด 6 Bay</strong></td>
+      <td>/display/bays</td>
+      <td>จอสำหรับทีมโหลด ดูคิวและจำนวนคงเหลือราย Bay (1-6) พร้อมกลุ่ม Unassigned</td>
+    </tr>
+    <tr>
+      <td><strong>จัดการ (Manager)</strong></td>
+      <td>/display/manager</td>
+      <td>จอควบคุมบนแท็บเล็ต ปรับจำนวนโหลดด้วยปุ่ม +1/+5/+10 และกดปิดงาน</td>
+    </tr>
+  </table>
+
+  <div class="screenshot">
+    <img src="screenshots/13a-display-manager.png" alt="จอแสดงผลโรงงาน — หน้าจัดการออเดอร์">
+    <p class="caption">รูปที่ 12 — จอแสดงผลโรงงาน — หน้าจัดการออเดอร์</p>
+  </div>
+
+  <div class="note">สามารถเข้าหน้าจอโรงงานได้จาก Sidebar โดยกดเมนู "จอโรงงาน" ซึ่งจะเปิดแท็บใหม่ หรือพิมพ์ URL โดยตรง</div>
+
+  <div class="tip">โหมดแนะนำสำหรับจอคู่: แท็บเล็ตเปิด <strong>/display/manager</strong> (จอสัมผัส), จอ HDMI เปิด <strong>/display/bays</strong> (จอคนโหลด)</div>
+</div>
+
+<!-- ============================== SECTION 14 ============================== -->
+<div class="section" id="sec14">
+  <h2 class="section-title"><span class="sec-num">14</span> จำลองขั้นตอนงานทั้งระบบ (End-to-End Workflow)</h2>
+
+  <p>ส่วนนี้แสดงขั้นตอนการทำงานจริงตั้งแต่รับออเดอร์จนจบ เพื่อให้เห็นภาพรวมว่าแต่ละส่วนเชื่อมกันอย่างไร</p>
+
+  <div class="workflow-flow">
+    <div class="wf-step">1. รับออเดอร์<br>(หน้าขาย)</div>
+    <div class="wf-arrow">&rarr;</div>
+    <div class="wf-step">2. จัดสินค้า<br>(จอโรงงาน)</div>
+    <div class="wf-arrow">&rarr;</div>
+    <div class="wf-step">3. ตรวจสอบ<br>(Back Office)</div>
+    <div class="wf-arrow">&rarr;</div>
+    <div class="wf-step">4. รายงาน<br>(Reports)</div>
+  </div>
+
+  <!-- STEP 1 -->
+  <h3>ขั้นตอนที่ 1 — รับออเดอร์ (หน้าขาย)</h3>
+  <p>พนักงานรับออเดอร์จากลูกค้า บันทึกลงหน้า <strong>"ขายน้ำแข็ง"</strong></p>
+  <ol class="steps">
+    <li>พิมพ์ชื่อลูกค้าในช่องค้นหา เช่น "ร้านอาหาร..." แล้วเลือก</li>
+    <li>ระบบจะโหลดราคาเฉพาะลูกค้า กรอกจำนวนสินค้าที่สั่ง เช่น น้ำแข็งหลอดใหญ่ 5 ถุง</li>
+    <li>ระบุ <strong>Bay 1-6</strong> (เว้นว่างได้ หากยังไม่ทราบ Bay)</li>
+    <li>เลือก <span class="badge badge-red">ค้างชำระ</span> (ลูกค้าเครดิต)</li>
+    <li>กด <strong>"บันทึกรายการ"</strong></li>
+  </ol>
+  <p>ผลลัพธ์: ระบบบันทึกรายการขาย สถานะ "ค้างชำระ" พร้อมสร้างรายการถุงออก — บันทึกระบบจะเก็บชื่อผู้ขายไว้โดยอัตโนมัติ</p>
+
+  <div class="screenshot">
+    <img src="screenshots/03-sale.png" alt="รับออเดอร์จากลูกค้า">
+    <p class="caption">รูปที่ 14a — รับออเดอร์จากลูกค้า (หน้าขาย)</p>
+  </div>
+
+  <!-- STEP 2 -->
+  <h3>ขั้นตอนที่ 2 — จัดสินค้า (จอโรงงาน)</h3>
+  <p>โหมดจอคู่: แท็บเล็ตใช้ <strong>/display/manager</strong> และจอโรงงานใช้ <strong>/display/bays</strong></p>
+  <ol class="steps">
+    <li>หน้าจอแสดงออเดอร์ที่รอจัด เรียงตามลำดับเข้า (FIFO)</li>
+    <li>ทีมโหลดดูคงเหลือราย Bay บน /display/bays เพื่อกระจายงานตาม Bay</li>
+    <li>ผู้ควบคุมกด +1/+5/+10 ใน /display/manager ตามจำนวนที่โหลดจริง</li>
+    <li>เมื่อครบแล้ว กดปุ่ม <strong>"โหลดเสร็จ"</strong> ออเดอร์จะเปลี่ยนสถานะเป็น "Loaded"</li>
+  </ol>
+  <p>ผลลัพธ์: ออเดอร์เปลี่ยนจาก "pending" เป็น "loaded" และจอ /display/bays + /display/summary จะอัพเดตทันที</p>
+
+  <div class="screenshot">
+    <img src="screenshots/12-display-queue.png" alt="จอโรงงาน: ออเดอร์รอจัดสินค้า">
+    <p class="caption">รูปที่ 14b — จอโรงงาน: ออเดอร์รอจัดสินค้า</p>
+  </div>
+
+  <!-- STEP 3 -->
+  <h3>ขั้นตอนที่ 3 — ตรวจสอบและรับชำระ (Back Office)</h3>
+  <p>พนักงานออฟฟิศตรวจสอบรายการขายและจัดการยอดค้าง</p>
+  <ol class="steps">
+    <li>ไปที่ <strong>"รายการขาย"</strong> — จะเห็นรายการที่เพิ่งบันทึก กดเข้าไปดูรายละเอียดเพื่อตรวจสอบ</li>
+    <li>ไปที่ <strong>"ค้างชำระ"</strong> — จะเห็นลูกค้ามียอดค้างชำระเพิ่มขึ้น</li>
+    <li>เมื่อลูกค้ามาจ่ายเงิน กดที่ชื่อลูกค้า &rarr; กด <strong>"ชำระ"</strong> ที่บิลนั้น &rarr; ใส่จำนวนเงิน &rarr; บันทึก</li>
+    <li>สถานะบิลเปลี่ยนจาก "ค้างชำระ" เป็น "ชำระแล้ว"</li>
+  </ol>
+
+  <div class="screenshot">
+    <img src="screenshots/13c-dashboard.png" alt="ตรวจสอบและรับชำระเงิน">
+    <p class="caption">รูปที่ 14c — แดชบอร์ดตรวจสอบยอดขายและค้างชำระ</p>
+  </div>
+
+  <!-- STEP 4 -->
+  <h3>ขั้นตอนที่ 4 — ดูรายงานสรุป</h3>
+  <p>สิ้นวันหรือสิ้นสัปดาห์ ดูรายงานสรุปเพื่อวิเคราะห์ผลประกอบการ</p>
+  <ol class="steps">
+    <li>ไปที่ <strong>"รายงาน"</strong> &rarr; แท็บ <strong>"สรุปรายวัน"</strong> — ดูยอดขายวันนี้</li>
+    <li>เปลี่ยนไปแท็บ <strong>"เงินสด"</strong> — กระทบยอดเงินสดรับจริง vs ยอดขาย</li>
+    <li>เปลี่ยนไปแท็บ <strong>"ตามสินค้า"</strong> — ดูว่าสินค้าไหนขายดีที่สุด</li>
+    <li>กดปุ่ม <strong>"ส่งออก CSV"</strong> หรือ <strong>"ส่งออก Excel"</strong> เพื่อเก็บข้อมูลไว้ใน Excel</li>
+  </ol>
+
+  <div class="screenshot">
+    <img src="screenshots/09a-reports-daily.png" alt="รายงานสรุปประจำวัน">
+    <p class="caption">รูปที่ 14d — รายงานสรุปประจำวัน</p>
+  </div>
+
+  <div class="note">ขั้นตอนทั้งหมดนี้เกิดขึ้นอัตโนมัติในระบบเดียว ข้อมูลจากหน้าขายไหลไปยังจอโรงงาน ค้างชำระ และรายงาน โดยไม่ต้องกรอกข้อมูลซ้ำ ทุกการกระทำถูกบันทึกใน Audit Log เพื่อการตรวจสอบ</div>
+</div>
+
+<!-- ============================== SECTION 15 ============================== -->
+<div class="section" id="sec15">
+  <h2 class="section-title"><span class="sec-num">15</span> คีย์ลัดสำหรับใช้งาน</h2>
+
+  <table>
+    <tr><th>คีย์ลัด</th><th>ฟังก์ชัน</th><th>ใช้ได้ที่</th></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>K</kbd></td><td>เปิด Command Palette ค้นหาเร็ว</td><td>ทุกหน้า</td></tr>
+    <tr><td><kbd>?</kbd></td><td>แสดงรายการคีย์ลัดทั้งหมด</td><td>ทุกหน้า (ยกเว้นขณะพิมพ์ในช่องข้อความ)</td></tr>
+    <tr><td><kbd>Enter</kbd></td><td>บันทึกรายการขาย</td><td>หน้าขาย</td></tr>
+    <tr><td><kbd>Escape</kbd></td><td>ล้างฟอร์มทั้งหมด</td><td>หน้าขาย</td></tr>
+    <tr><td><kbd>F2</kbd></td><td>โฟกัสช่องค้นหาลูกค้า</td><td>หน้าขาย</td></tr>
+  </table>
+
+  <div class="tip">Command Palette (<kbd>Ctrl</kbd>+<kbd>K</kbd>) สามารถค้นหาชื่อเมนู ชื่อลูกค้า หรือคำสั่งได้ทันที เช่น พิมพ์ "ราย" จะแสดงทั้ง "รายการขาย" และ "รายงาน"</div>
+</div>
+
+<!-- ============================== SECTION 16 ============================== -->
+<div class="section" id="sec16">
+  <h2 class="section-title"><span class="sec-num">16</span> แนวทางก่อนใช้งานจริง (Go-Live)</h2>
+
+  <p>หัวข้อนี้ใช้สำหรับประชุมทีมก่อนเริ่มใช้งานจริง เพื่อให้ทุกคนเข้าใจหน้าที่ กติกา และวิธีรับมือเมื่อเกิดปัญหาในช่วงสัปดาห์แรก</p>
+
+  <h3>หัวข้อที่ควรตกลงให้ชัดก่อนวันเริ่มใช้งาน</h3>
+  <table>
+    <tr><th>หัวข้อ</th><th>สิ่งที่ต้องตกลง</th></tr>
+    <tr><td>วันเริ่มใช้งานจริง</td><td>เริ่มใช้ระบบวันไหน เวลาใด และหยุดใช้วิธีเดิมตั้งแต่เมื่อใด</td></tr>
+    <tr><td>เครื่องที่ใช้งาน</td><td>เครื่องขายหลัก เครื่องพิมพ์หลัก และหน้าจอโรงงานใช้เครื่องใด ใครดูแล</td></tr>
+    <tr><td>บทบาทประจำจุด</td><td>ใครรับออเดอร์ ใครจัดสินค้า ใครตรวจสอบค้างชำระ ใครอนุมัติกรณีพิเศษ</td></tr>
+    <tr><td>สิทธิ์อนุมัติ</td><td>ใครมีสิทธิ์ยกเลิกบิล แก้ไขย้อนหลัง ปรับราคา หรือปรับยอดถุง</td></tr>
+    <tr><td>ขั้นตอนสำรอง</td><td>ถ้าอินเทอร์เน็ตล่ม พิมพ์ไม่ได้ หรือจอโรงงานไม่อัปเดต ให้ติดต่อใครและทำงานต่ออย่างไร</td></tr>
+    <tr><td>การปิดยอดสิ้นวัน</td><td>ใครตรวจยอดขาย เงินสดรับ ค้างชำระ ถุง และรายงานสรุปก่อนจบวัน</td></tr>
+  </table>
+
+  <h3>หน้าที่แต่ละบทบาทในวันเริ่มใช้งาน</h3>
+  <table>
+    <tr><th>บทบาท</th><th>หน้าที่หลัก</th></tr>
+    <tr><td>Admin</td><td>ดูแลผู้ใช้ รหัสผ่าน การตั้งค่า สินค้า/สต็อก สำรองข้อมูล และตรวจสอบ Audit Log เมื่อมีปัญหา</td></tr>
+    <tr><td>Office</td><td>รับออเดอร์ เลือกลูกค้าให้ถูก ตรวจราคา บันทึกยอดรับ พิมพ์เอกสาร และตรวจสอบรายการขายกับค้างชำระ</td></tr>
+    <tr><td>Manager</td><td>อนุมัติกรณีพิเศษ เช่น ยกเลิกบิล ย้อนวันที่ แก้ไขผิดพลาดสำคัญ และตัดสินใจเมื่อข้อมูลไม่ตรงกัน</td></tr>
+    <tr><td>Factory</td><td>ดูหน้าจอ <strong>/display</strong> หรือ <strong>/display/manager</strong> จัดสินค้าตามคิว กด <strong>"โหลดแล้ว"</strong> เมื่อเสร็จ และแจ้งทันทีหากจำนวนไม่ตรง</td></tr>
+  </table>
+
+  <h3>สถานการณ์ที่ต้องแจ้งหัวหน้าทันที</h3>
+  <ul>
+    <li>เลือกลูกค้าผิด ราคาผิด หรือบันทึกยอดเงินผิด</li>
+    <li>ต้องยกเลิกบิลหรือแก้ไขรายการย้อนหลัง</li>
+    <li>ยอดถุงไม่ตรงกับของจริง หรือมีการปรับยอดถุงด้วยมือ</li>
+    <li>อินเทอร์เน็ตหลุดแล้วรายการค้างส่งนานผิดปกติ</li>
+    <li>เครื่องพิมพ์ไม่พิมพ์ พิมพ์ซ้อน หรือพิมพ์คลาดตำแหน่ง</li>
+    <li>จอโรงงานไม่ขึ้นออเดอร์ หรือสถานะไม่เปลี่ยนหลังจัดของเสร็จ</li>
+  </ul>
+
+  <h3>เช็กลิสต์สิ้นวันช่วงสัปดาห์แรก</h3>
+  <ol class="steps">
+    <li>ตรวจยอดขายรวมของวันจากรายงาน เทียบกับรายการขายที่บันทึกจริง</li>
+    <li>ตรวจยอดเงินสดรับจริง เทียบกับบิลที่บันทึกรับชำระในระบบ</li>
+    <li>ตรวจบิลค้างชำระใหม่และบิลที่มีการรับชำระบางส่วน</li>
+    <li>ตรวจยอดถุงออก คืนถุง และซื้อถุง ว่าตรงกับการใช้งานจริง</li>
+    <li>ตรวจว่ามีรายการผิดพลาดหรือข้อสงสัยค้างอยู่หรือไม่ แล้วสรุปปัญหาไว้สำหรับประชุมสั้นวันถัดไป</li>
+  </ol>
+
+  <div class="tip">แนะนำให้ประชุมสรุปสั้น 10-15 นาทีทุกวันในสัปดาห์แรกของการใช้งานจริง เพื่อเก็บปัญหาที่พบและปรับขั้นตอนให้ทีมใช้ตรงกัน</div>
+  <div class="note">หากต้องสอนพนักงานใหม่ ให้ใช้ลำดับฝึก 3 กรณีหลัก: ขายปกติ 1 บิล, ค้างชำระ 1 บิล, และคืน/ปรับรายการ 1 กรณี เพื่อให้เห็นการไหลของข้อมูลทั้งระบบ</div>
+</div>
+
+<!-- ============================== FOOTER ============================== -->
+<div class="page" style="margin-top: 48px; text-align: center; color: var(--gray); font-size: 12px; border-top: 1px solid var(--border); padding-top: 24px;">
+  <p><strong>Super Ice POS</strong> — คู่มือการใช้งาน เวอร์ชัน 2.1</p>
+  <p>มีนาคม 2569</p>
+</div>
+
+</div><!-- .page wrapper end -->
+
+</body>
+</html>

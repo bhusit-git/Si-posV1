@@ -1,0 +1,61 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# databases
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# data files (CSVs, Access DB)
+/data/
+*.mdb
+
+*.agent
+*.agents
+*.cursor
+.env.local
+docs/bi_board_report_2024_2026.pdf
+docs/bi-report-2024-2026.pdf
+docs/user-manual-th.pdf
+docs/forensics/backdated-fraud-analysis-2026-02-18T08-43-22-684Z-report.pdf
+docs/forensics/deep-fraud-analysis-2026-02-18T09-07-27-484Z-report.pdf
