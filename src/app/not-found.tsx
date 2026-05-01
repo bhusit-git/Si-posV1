@@ -9,7 +9,7 @@ export default function NotFound() {
         หน้าที่คุณเข้าชมไม่มีอยู่ในระบบ หรืออาจถูกย้ายไปแล้ว
       </p>
       <Link
-        href="/dashboard"
+        href="/modules"
         className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity"
       >
         กลับหน้าหลัก

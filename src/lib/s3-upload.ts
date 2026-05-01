@@ -7,17 +7,28 @@ interface S3PutObjectParams {
   secretAccessKey: string;
   bucket: string;
   key: string;
-  body: string;
+  body: string | Uint8Array | ArrayBuffer;
   contentType: string;
   sessionToken?: string;
 }
 
 interface S3PutObjectResult {
   etag: string | null;
+  objectUrl: string;
 }
 
-function sha256Hex(input: string): string {
-  return createHash("sha256").update(input, "utf8").digest("hex");
+function toBodyBytes(input: string | Uint8Array | ArrayBuffer): Uint8Array {
+  if (typeof input === "string") {
+    return new TextEncoder().encode(input);
+  }
+  if (input instanceof Uint8Array) {
+    return input;
+  }
+  return new Uint8Array(input);
+}
+
+function sha256Hex(input: string | Uint8Array): string {
+  return createHash("sha256").update(input).digest("hex");
 }
 
 function hmacSha256(key: Buffer | string, data: string): Buffer {
@@ -48,10 +59,11 @@ export async function putObjectToS3Compatible(
   const host = endpointUrl.host;
   const service = "s3";
   const now = new Date();
+  const bodyBytes = toBodyBytes(params.body);
 
   const amzDate = toAmzDate(now);
   const dateStamp = amzDate.slice(0, 8);
-  const payloadHash = sha256Hex(params.body);
+  const payloadHash = sha256Hex(bodyBytes);
 
   const canonicalBucket = encodePathSegment(params.bucket);
   const canonicalKey = encodePathPreservingSlashes(params.key.replace(/^\/+/, ""));
@@ -119,7 +131,7 @@ export async function putObjectToS3Compatible(
         : {}),
       Authorization: authorization,
     },
-    body: params.body,
+    body: bodyBytes,
   });
 
   if (!response.ok) {
@@ -131,5 +143,6 @@ export async function putObjectToS3Compatible(
 
   return {
     etag: response.headers.get("etag"),
+    objectUrl: requestUrl,
   };
 }

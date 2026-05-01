@@ -93,7 +93,7 @@ export default function LoginPage() {
           ? "/display"
           : data.role === "user"
             ? "/user/sale"
-            : "/sale";
+            : "/modules";
       router.push(nextRoute);
 
       scheduleBackgroundTask(async () => {

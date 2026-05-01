@@ -1,0 +1,304 @@
+import { NextRequest, NextResponse } from "next/server";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
+
+import type { DrizzleDB } from "@/db";
+import { supplyRequestItems, supplyRequests } from "@/db/schema";
+import { requireManagerUp } from "@/lib/api-auth";
+import { withErrorHandler } from "@/lib/api-utils";
+import { logAudit } from "@/lib/audit";
+import { buildSupplyRequestRefMap } from "@/lib/supply/request-ref";
+import {
+  badRequest,
+  parseInteger,
+  parseOptionalString,
+  resolveSupplyReadContext,
+  resolveSupplyWriteContext,
+} from "@/lib/supply/route-helpers";
+
+const REQUEST_TYPES = new Set(["internal_factory", "cross_factory"]);
+const REQUEST_STATUSES = new Set(["draft", "pending"]);
+type SupplyRequestRow = typeof supplyRequests.$inferSelect;
+type SupplyRequestItemRow = typeof supplyRequestItems.$inferSelect;
+
+function isMissingSupplyRequestTableError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const rec = error as { code?: unknown; cause?: unknown; message?: unknown };
+  if (rec.code === "42P01") return true;
+  if (
+    typeof rec.message === "string" &&
+    (rec.message.includes(`"supply_requests"`) ||
+      rec.message.includes(`"supply_request_items"`))
+  ) {
+    return true;
+  }
+  return isMissingSupplyRequestTableError(rec.cause);
+}
+
+function isMissingUsersRelationError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const rec = error as { cause?: unknown; message?: unknown };
+  if (typeof rec.message === "string" && rec.message.includes(`"users"`)) {
+    return true;
+  }
+  return isMissingUsersRelationError(rec.cause);
+}
+
+function normalizeRequestItems(items: unknown) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  const normalized = items
+    .map((item) => {
+      const supplyItemId = parseInteger((item as { supplyItemId?: unknown }).supplyItemId);
+      const quantity = parseInteger((item as { quantity?: unknown }).quantity);
+      const note = parseOptionalString((item as { note?: unknown }).note);
+      if (!supplyItemId || !quantity || quantity <= 0) return null;
+      return { supplyItemId, quantity, note };
+    })
+    .filter((item): item is { supplyItemId: number; quantity: number; note: string | null } => item !== null);
+
+  return normalized.length > 0 ? normalized : null;
+}
+
+function appendItems(
+  requests: SupplyRequestRow[],
+  items: SupplyRequestItemRow[]
+) {
+  const itemsByRequest = new Map<number, SupplyRequestItemRow[]>();
+  for (const item of items) {
+    const current = itemsByRequest.get(item.requestId) || [];
+    current.push(item);
+    itemsByRequest.set(item.requestId, current);
+  }
+
+  return requests.map((row) => ({
+    ...row,
+    items: itemsByRequest.get(row.id) || [],
+  }));
+}
+
+async function loadRequestsWithSelect(
+  db: DrizzleDB,
+  factoryKey: string,
+  status: string | null
+) {
+  const where = status
+    ? and(eq(supplyRequests.factoryKey, factoryKey), eq(supplyRequests.status, status as never))
+    : eq(supplyRequests.factoryKey, factoryKey);
+
+  const rows = await db
+    .select()
+    .from(supplyRequests)
+    .where(where)
+    .orderBy(desc(supplyRequests.updatedAt), desc(supplyRequests.id));
+
+  if (rows.length === 0) return [];
+
+  const items = await db
+    .select()
+    .from(supplyRequestItems)
+    .where(inArray(supplyRequestItems.requestId, rows.map((row) => row.id)))
+    .orderBy(asc(supplyRequestItems.id));
+
+  return appendItems(rows, items);
+}
+
+async function loadRequests(db: DrizzleDB, factoryKey: string, status: string | null) {
+  const findMany = db.query?.supplyRequests?.findMany;
+  if (!findMany) {
+    return loadRequestsWithSelect(db, factoryKey, status);
+  }
+
+  return findMany({
+    where: status ? and(eq(supplyRequests.factoryKey, factoryKey), eq(supplyRequests.status, status as never)) : eq(supplyRequests.factoryKey, factoryKey),
+    with: {
+      items: true,
+    },
+    orderBy: [desc(supplyRequests.updatedAt), desc(supplyRequests.id)],
+  });
+}
+
+async function loadRequestDetail(db: DrizzleDB, requestId: number) {
+  const findFirst = db.query?.supplyRequests?.findFirst;
+  if (!findFirst) {
+    const [requestRow] = await db
+      .select()
+      .from(supplyRequests)
+      .where(eq(supplyRequests.id, requestId))
+      .limit(1);
+    if (!requestRow) return null;
+
+    const items = await db
+      .select()
+      .from(supplyRequestItems)
+      .where(eq(supplyRequestItems.requestId, requestId))
+      .orderBy(asc(supplyRequestItems.id));
+
+    return {
+      ...requestRow,
+      items,
+      createdByUser: null,
+      approvedByUser: null,
+    };
+  }
+
+  try {
+    return await findFirst({
+      where: eq(supplyRequests.id, requestId),
+      with: {
+        items: {
+          orderBy: [asc(supplyRequestItems.id)],
+        },
+        createdByUser: true,
+        approvedByUser: true,
+      },
+    });
+  } catch (error) {
+    if (!isMissingUsersRelationError(error)) throw error;
+
+    const [requestRow] = await db
+      .select()
+      .from(supplyRequests)
+      .where(eq(supplyRequests.id, requestId))
+      .limit(1);
+    if (!requestRow) return null;
+
+    const items = await db
+      .select()
+      .from(supplyRequestItems)
+      .where(eq(supplyRequestItems.requestId, requestId))
+      .orderBy(asc(supplyRequestItems.id));
+
+    return {
+      ...requestRow,
+      items,
+      createdByUser: null,
+      approvedByUser: null,
+    };
+  }
+}
+
+async function loadRequestRefMap(db: DrizzleDB, factoryKey: string) {
+  const rows = await db
+    .select({
+      id: supplyRequests.id,
+      createdAt: supplyRequests.createdAt,
+    })
+    .from(supplyRequests)
+    .where(eq(supplyRequests.factoryKey, factoryKey))
+    .orderBy(asc(supplyRequests.createdAt), asc(supplyRequests.id));
+
+  return buildSupplyRequestRefMap(rows);
+}
+
+export const GET = withErrorHandler(async function GET(request: NextRequest) {
+  const auth = await requireManagerUp();
+  if (auth.error) return auth.error;
+
+  const context = resolveSupplyReadContext(request, auth.user);
+  if ("error" in context) return context.error;
+
+  const status = request.nextUrl.searchParams.get("status")?.trim() || null;
+  let rows;
+  try {
+    rows = await loadRequests(context.db, context.factoryKey, status);
+  } catch (error) {
+    if (isMissingSupplyRequestTableError(error)) {
+      return NextResponse.json([]);
+    }
+    throw error;
+  }
+
+  const requestRefs = await loadRequestRefMap(context.db, context.factoryKey);
+  return NextResponse.json(
+    rows.map((row) => ({
+      ...row,
+      requestRef: requestRefs.get(row.id) || null,
+    }))
+  );
+});
+
+export const POST = withErrorHandler(async function POST(request: NextRequest) {
+  const auth = await requireManagerUp();
+  if (auth.error) return auth.error;
+
+  const context = resolveSupplyWriteContext(request, auth.user);
+  if ("error" in context) return context.error;
+
+  const body = await request.json();
+  const requestType = typeof body?.requestType === "string" ? body.requestType : "internal_factory";
+  const requestedStatus = typeof body?.status === "string" ? body.status : "draft";
+  const targetFactoryKey = parseOptionalString(body?.targetFactoryKey);
+  const requesterName = parseOptionalString(body?.requesterName);
+  const note = parseOptionalString(body?.note);
+  const items = normalizeRequestItems(body?.items);
+
+  if (!REQUEST_TYPES.has(requestType)) return badRequest("ประเภทใบเบิกไม่ถูกต้อง");
+  if (!REQUEST_STATUSES.has(requestedStatus)) {
+    return badRequest("สถานะใบเบิกเริ่มต้นไม่ถูกต้อง");
+  }
+  if (requestType === "cross_factory" && !targetFactoryKey) {
+    return badRequest("กรุณาเลือกโรงงานต้นทางสำหรับการเบิกข้ามโรงงาน");
+  }
+  if (!items) return badRequest("กรุณาระบุรายการเบิกอย่างน้อย 1 รายการ");
+  if (!requesterName) return badRequest("กรุณาระบุผู้ขอใช้จริง");
+
+  const created = await context.db.transaction(async (tx) => {
+    const [requestRow] = await tx
+      .insert(supplyRequests)
+      .values({
+        factoryKey: context.factoryKey,
+        requestType: requestType as "internal_factory" | "cross_factory",
+        targetFactoryKey,
+        requesterName,
+        createdBy: auth.user.id,
+        status: requestedStatus,
+        note,
+        updatedAt: new Date(),
+      })
+      .returning();
+
+    await tx.insert(supplyRequestItems).values(
+      items.map((item) => ({
+        requestId: requestRow.id,
+        supplyItemId: item.supplyItemId,
+        quantityRequested: item.quantity,
+        quantityApproved: null,
+        note: item.note,
+      }))
+    );
+
+    return requestRow;
+  });
+
+  await logAudit(
+    {
+      userId: auth.user.id,
+      username: auth.user.username,
+      action: "supply.request.create",
+      entity: "supply_request",
+      entityId: created.id,
+      details: {
+        factoryKey: context.factoryKey,
+        requestType,
+        status: requestedStatus,
+        targetFactoryKey,
+        requesterName,
+        note,
+        itemCount: items.length,
+      },
+    },
+    context.db
+  );
+
+  const detail = await loadRequestDetail(context.db, created.id);
+  const requestRefs = await loadRequestRefMap(context.db, context.factoryKey);
+
+  return NextResponse.json(
+    detail
+      ? {
+          ...detail,
+          requestRef: requestRefs.get(detail.id) || null,
+        }
+      : null,
+    { status: 201 }
+  );
+});

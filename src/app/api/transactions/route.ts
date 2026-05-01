@@ -388,7 +388,7 @@ export const POST = withErrorHandler(async function POST(request: NextRequest) {
       );
     }
 
-    const saleYmd = saleDate.replace(/-/g, "");
+    const saleYm = saleDate.replace(/-/g, "").slice(0, 6);
     const existingTransferRows = await db
       .select({
         transferRef: transactions.transferRef,
@@ -397,11 +397,12 @@ export const POST = withErrorHandler(async function POST(request: NextRequest) {
       .from(transactions)
       .where(
         and(
-          eq(transactions.saleDate, saleDate),
+          sql`to_char(${transactions.saleDate}, 'YYYY-MM') = ${saleDate.slice(0, 7)}`,
           ne(transactions.status, "voided"),
           sql`(
             ${transactions.transactionKind} = 'transfer_out'
-            OR ${transactions.note} LIKE ${`XFER|ref=XFER-${saleYmd}-%`}
+            OR ${transactions.note} LIKE ${`XFER|ref=TRF-${saleYm}__-%`}
+            OR ${transactions.note} LIKE ${`XFER|ref=XFER-${saleYm}__-%`}
           )`
         )
       );

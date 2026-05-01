@@ -18,7 +18,7 @@ import {
 function buildTransfer(overrides: Partial<typeof supplyTransfers.$inferSelect> = {}) {
   return {
     id: 91,
-    transferRef: "XFER-20260430-001",
+    transferRef: "TRF-20260430-001",
     fromFactoryKey: "si",
     toFactoryKey: "bearing",
     status: "sending" as const,

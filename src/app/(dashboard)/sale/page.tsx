@@ -1247,7 +1247,7 @@ export default function SalePage() {
         }
         if (!TRANSFER_REF_REGEX.test(normalizedTransferRef)) {
           toast.error("รหัสโอนไม่ถูกต้อง", {
-            description: "ใช้รูปแบบ XFER-YYYYMMDD-###",
+            description: "ใช้รูปแบบ TRF-YYYYMMDD-###",
           });
           return;
         }

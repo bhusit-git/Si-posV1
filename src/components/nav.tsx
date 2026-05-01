@@ -24,6 +24,7 @@ import {
   Sun,
   Moon,
   LogOut,
+  ArrowLeft,
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
@@ -355,6 +356,12 @@ export function Sidebar() {
         </nav>
 
         <div className="p-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
+          <Button asChild variant="outline" size="sm" className="w-full rounded-full">
+            <Link href="/modules">
+              <ArrowLeft size={14} className="mr-1" />
+              กลับหน้าหลัก
+            </Link>
+          </Button>
           <div className="space-y-1">
             <p className="px-2 text-[11px] font-medium text-gray-500 dark:text-gray-400">
               {t.textSize}

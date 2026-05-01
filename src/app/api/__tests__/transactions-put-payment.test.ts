@@ -66,7 +66,7 @@ vi.mock("@/lib/transfer-utils", () => ({
   buildTransferNote: mocks.buildTransferNote,
   getTransferAccountingStatus: mocks.getTransferAccountingStatus,
   parseTransferNote: mocks.parseTransferNote,
-  TRANSFER_REF_REGEX: /^XFER-\d{8}-\d{3}$/,
+  TRANSFER_REF_REGEX: /^(?:TRF|XFER)-\d{8}-\d{3}$/,
 }));
 
 vi.mock("@/lib/invoice-credit-rollout", () => ({

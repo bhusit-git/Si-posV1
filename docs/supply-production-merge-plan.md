@@ -1,6 +1,6 @@
 # Supply Module Production Merge Plan
 
-**Last updated:** 2026-04-30
+**Last updated:** 2026-05-01
 
 ## Purpose
 
@@ -48,6 +48,9 @@
 ไฟล์หลัก:
 
 - `src/shared/db/schema/index.ts`
+- `src/shared/db/schema/core.ts`
+- `src/shared/db/schema/supply.ts`
+- `src/shared/db/schema/supply-entry.ts`
 - `src/lib/supply/stock-engine.ts`
 - `src/lib/supply/request-engine.ts`
 - `src/lib/supply/transfer-engine.ts`
@@ -57,7 +60,7 @@
 
 เป้าหมาย:
 
-- เพิ่ม enum / table / relation
+- เพิ่ม enum / table / relation ของ Supply โดยแยกออกจาก schema ของ POS
 - เพิ่ม business logic ที่ยังไม่ผูกกับ UI
 - ทำให้ production repo “รู้จัก supply domain” ก่อน
 
@@ -126,7 +129,9 @@
 
 - `supply-module-plan.md`
 - `docs/supply-production-merge-plan.md`
-- scripts ที่ช่วย migrate / verify ถ้าจำเป็น
+- `scripts/push-schema.ts`
+- `package.json`
+- scripts อื่นที่ช่วย migrate / verify ถ้าจำเป็น
 
 เป้าหมาย:
 
@@ -175,10 +180,15 @@
 ```bash
 git diff --binary <baseline_commit>..HEAD -- \
   src/shared/db/schema/index.ts \
+  src/shared/db/schema/core.ts \
+  src/shared/db/schema/supply.ts \
+  src/shared/db/schema/supply-entry.ts \
   src/lib/supply \
   src/lib/__tests__/stock-engine.test.ts \
   src/lib/__tests__/request-engine.test.ts \
   src/lib/__tests__/transfer-engine.test.ts \
+  scripts/push-schema.ts \
+  package.json \
   > /tmp/supply-phase0.patch
 ```
 
@@ -227,6 +237,9 @@ git tag production-pre-supply-merge-2026-04-30
 โดยเฉพาะ:
 
 - `src/shared/db/schema/index.ts`
+- `src/shared/db/schema/core.ts`
+- `src/shared/db/schema/supply.ts`
+- `src/shared/db/schema/supply-entry.ts`
 - `src/components/nav.tsx`
 - `src/app/(dashboard)/bags/page.tsx`
 
@@ -257,7 +270,25 @@ Supply module พึ่ง schema ใหม่
 
 เริ่มจาก dev/staging ก่อน แล้วค่อย production
 
-ถ้าต้อง rollout แบบค่อยเป็นค่อยไป ใช้ `SCHEMA_PUSH_TARGETS`
+ถ้าจะ rollout เฉพาะ Supply module ให้ใช้:
+
+```bash
+npm run db:push:supply
+```
+
+คำสั่งนี้ตั้งค่า:
+
+- `SCHEMA_PATH_OVERRIDE=./src/shared/db/schema/supply-entry.ts`
+- `SCHEMA_PUSH_SANITIZE=false`
+
+เพื่อ push เฉพาะ schema entry ของ Supply โดยไม่พา schema bundle ของ POS ทั้งก้อน
+และไม่รัน legacy sanitize step ของ `db:push`
+
+ถ้าต้อง rollout แบบค่อยเป็นค่อยไปตาม database target ให้ใช้ `SCHEMA_PUSH_TARGETS`
+ร่วมกับ script ที่เหมาะกับงาน:
+
+- ใช้ `npm run db:push:supply` เมื่อ rollout เฉพาะ Supply
+- ใช้ `npm run db:push` เฉพาะกรณีที่ตั้งใจ rollout schema หลักทั้งระบบ
 
 ตัวอย่าง:
 

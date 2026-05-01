@@ -91,26 +91,28 @@ describe("transfer utils", () => {
   });
 
   it("allocates next available ref when preferred ref is already used", () => {
-    const ref = allocateTransferRef("2026-02-27", ["XFER-20260227-838"], "XFER-20260227-838");
-    expect(ref).toBe("XFER-20260227-839");
+    const ref = allocateTransferRef("2026-02-27", ["TRF-20260227-838"], "TRF-20260227-838");
+    expect(ref).toBe("TRF-20260227-839");
   });
 
   it("keeps preferred ref when it is still available", () => {
-    const ref = allocateTransferRef("2026-02-27", ["XFER-20260227-001"], "XFER-20260227-838");
-    expect(ref).toBe("XFER-20260227-838");
+    const ref = allocateTransferRef("2026-02-27", ["TRF-20260227-001"], "TRF-20260227-838");
+    expect(ref).toBe("TRF-20260227-838");
   });
 
-  it("allocates from sale date when preferred ref has different date", () => {
-    const ref = allocateTransferRef("2026-02-27", ["XFER-20260227-000"], "XFER-20260226-123");
-    expect(ref).toBe("XFER-20260227-001");
+  it("allocates from sale date when preferred ref has different month", () => {
+    const ref = allocateTransferRef("2026-02-27", ["TRF-20260227-001"], "TRF-20260126-123");
+    expect(ref).toBe("TRF-20260227-002");
   });
 
-  it("buildLocalTransferRef increments local sequence by date", () => {
-    const ymd = "20260227";
-    localStorage.removeItem(`superice-transfer-seq-${ymd}`);
+  it("restarts numbering monthly and starts at 001", () => {
+    const ym = "202602";
+    localStorage.removeItem(`superice-transfer-seq-${ym}`);
     const first = buildLocalTransferRef("2026-02-27");
     const second = buildLocalTransferRef("2026-02-27");
-    expect(first).toBe("XFER-20260227-000");
-    expect(second).toBe("XFER-20260227-001");
+    const third = buildLocalTransferRef("2026-03-01");
+    expect(first).toBe("TRF-20260227-001");
+    expect(second).toBe("TRF-20260227-002");
+    expect(third).toBe("TRF-20260301-001");
   });
 });

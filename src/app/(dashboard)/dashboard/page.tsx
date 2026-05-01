@@ -173,7 +173,7 @@ export default function DashboardPage() {
           return;
         }
         if (session?.role === "manager") {
-          router.replace("/sale");
+          router.replace("/modules");
           return;
         }
         if (session?.role === "factory") {

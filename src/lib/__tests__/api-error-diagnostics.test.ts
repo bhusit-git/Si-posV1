@@ -69,6 +69,7 @@ describe("api error diagnostics", () => {
     const payload = parseApiErrorResponse({
       error: "เกิดข้อผิดพลาดภายในระบบ",
       requestId: "req_123",
+      debugMessage: 'relation "supply_requests" does not exist',
       diagnostic: {
         code: "FILE-EXPORT-1001",
         category: "file.export",
@@ -93,5 +94,8 @@ describe("api error diagnostics", () => {
     expect(buildApiErrorDescription(payload, "fallback")).toContain("FILE-EXPORT-1001");
     expect(buildApiErrorDescription(payload, "fallback")).toContain("reports.export");
     expect(buildApiErrorDescription(payload, "fallback")).toContain("req_123");
+    expect(buildApiErrorDescription(payload, "fallback")).toContain(
+      'relation "supply_requests" does not exist'
+    );
   });
 });

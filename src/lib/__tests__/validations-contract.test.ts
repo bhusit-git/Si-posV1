@@ -156,7 +156,7 @@ describe("Validation contracts", () => {
         items: [{ productTypeId: 1, quantity: 2, unitPrice: 120 }],
         bagReturns: [],
         transactionType: "transfer_out",
-        transferRef: "XFER-20260217-001",
+        transferRef: "TRF-20260217-001",
         transferDestination: "BEARING",
       });
       expect(parsed.success).toBe(true);
@@ -170,7 +170,7 @@ describe("Validation contracts", () => {
         items: [],
         bagReturns: [{ productTypeId: 1, quantity: 5 }],
         transactionType: "transfer_out",
-        transferRef: "XFER-20260217-004",
+        transferRef: "TRF-20260217-004",
       });
       expect(parsed.success).toBe(true);
     });
@@ -183,7 +183,7 @@ describe("Validation contracts", () => {
         items: [{ productTypeId: 1, quantity: 2, unitPrice: 120 }],
         bagReturns: [],
         transactionType: "transfer_out",
-        transferRef: "XFER-20260217-002",
+        transferRef: "TRF-20260217-002",
       });
       expect(parsed.success).toBe(true);
     });
@@ -196,7 +196,7 @@ describe("Validation contracts", () => {
         items: [{ productTypeId: 1, quantity: 2, unitPrice: 120 }],
         bagReturns: [],
         transactionType: "transfer_out",
-        transferRef: "XFER-20260217-003",
+        transferRef: "TRF-20260217-003",
         note: "reconcile later",
       });
       expect(parsed.success).toBe(true);

@@ -4,10 +4,12 @@ import {
   classifyApiError,
   extractErrorCauseChain,
   extractErrorShape,
+  extractPostgresError,
   type ApiErrorDiagnostic,
   type RecordLike,
 } from "@/lib/api-error-diagnostics";
 import { findDiagnosticError } from "@/lib/diagnostic-error";
+import { getSupericeEnv } from "@/lib/config/env";
 
 export function createRequestId(): string {
   const cryptoRef = globalThis.crypto;
@@ -117,6 +119,8 @@ export function buildLoggedInternalApiError(params: {
       params.fallbackOperation ||
       `${params.request.method} ${params.request.nextUrl.pathname}`,
   });
+  const errorShape = extractErrorShape(params.error);
+  const pg = extractPostgresError(params.error);
 
   logApiError({
     request: params.request,
@@ -131,14 +135,29 @@ export function buildLoggedInternalApiError(params: {
   return {
     requestId,
     status: params.status || 500,
-    body: buildInternalApiErrorBody(
-      params.error,
-      requestId,
-      params.message,
-      {
-        source: diagnostic.source,
-        operation: diagnostic.operation,
-      }
-    ),
+    body: {
+      ...buildInternalApiErrorBody(
+        params.error,
+        requestId,
+        params.message,
+        {
+          source: diagnostic.source,
+          operation: diagnostic.operation,
+        }
+      ),
+      ...(getSupericeEnv().isProduction
+        ? {}
+        : {
+            debugMessage: [
+              typeof errorShape.message === "string" ? errorShape.message : null,
+              pg?.code ? `postgres ${pg.code}` : null,
+              pg?.table ? `table ${pg.table}` : null,
+              pg?.column ? `column ${pg.column}` : null,
+              pg?.constraint ? `constraint ${pg.constraint}` : null,
+            ]
+              .filter((part): part is string => Boolean(part))
+              .join(" | "),
+          }),
+    },
   };
 }

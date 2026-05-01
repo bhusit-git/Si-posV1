@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { DrizzleDB } from "@/db";
 import { requireAdmin, requireManagerUp } from "@/lib/api-auth";
 import { withErrorHandler } from "@/lib/api-utils";
+import { extractPostgresError } from "@/lib/api-error-diagnostics";
 import { logAudit } from "@/lib/audit";
 import { normalizeSupplyItemSettings } from "@/lib/supply/item-settings";
 import { resolveSupplyReadContext, resolveSupplyWriteContext } from "@/lib/supply/route-helpers";
@@ -43,7 +44,19 @@ export const GET = withErrorHandler(async function GET(request: NextRequest) {
   const context = resolveSupplyReadContext(request, auth.user);
   if ("error" in context) return context.error;
 
-  const settings = await loadSupplySettings(context.factoryKey, context.db);
+  let settings;
+  try {
+    settings = await loadSupplySettings(context.factoryKey, context.db);
+  } catch (error) {
+    const pg = extractPostgresError(error);
+    if (pg?.code === "42P01") {
+      return NextResponse.json(
+        { error: "ยังไม่พร้อมใช้งาน: ต้องอัปเดตฐานข้อมูล Supply ก่อน (ตาราง supply_catalog_settings)" },
+        { status: 503 }
+      );
+    }
+    throw error;
+  }
   return NextResponse.json(settings);
 });
 
@@ -57,24 +70,35 @@ export const PUT = withErrorHandler(async function PUT(request: NextRequest) {
   const body = await request.json().catch(() => null);
   const settings = normalizeSupplyItemSettings(body);
 
-  await context.db
-    .insert(supplyCatalogSettings)
-    .values({
-      factoryKey: context.factoryKey,
-      units: settings.units,
-      categories: settings.categories,
-      updatedBy: auth.user.id,
-      updatedAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: supplyCatalogSettings.factoryKey,
-      set: {
+  try {
+    await context.db
+      .insert(supplyCatalogSettings)
+      .values({
+        factoryKey: context.factoryKey,
         units: settings.units,
         categories: settings.categories,
         updatedBy: auth.user.id,
         updatedAt: new Date(),
-      },
-    });
+      })
+      .onConflictDoUpdate({
+        target: supplyCatalogSettings.factoryKey,
+        set: {
+          units: settings.units,
+          categories: settings.categories,
+          updatedBy: auth.user.id,
+          updatedAt: new Date(),
+        },
+      });
+  } catch (error) {
+    const pg = extractPostgresError(error);
+    if (pg?.code === "42P01") {
+      return NextResponse.json(
+        { error: "บันทึกไม่ได้: ยังไม่ได้อัปเดตฐานข้อมูล Supply (ตาราง supply_catalog_settings)" },
+        { status: 503 }
+      );
+    }
+    throw error;
+  }
 
   await logAudit(
     {

@@ -17,10 +17,11 @@ export type SupplyTransferItemRow = typeof supplyTransferItems.$inferSelect;
 
 type TransferDb = Pick<
   DrizzleDb,
-  "select" | "insert" | "update" | "transaction"
+  "select" | "insert" | "update" | "transaction" | "execute"
 >;
 
 export interface CreateTransferPayload {
+  requestId?: number | null;
   fromFactoryKey: string;
   toFactoryKey: string;
   note?: string | null;
@@ -124,13 +125,15 @@ async function allocateSupplyTransferRef(
   preferredRef?: string | null
 ): Promise<string> {
   const saleDateISO = dateIsoForRef();
-  const ymd = saleDateISO.replace(/-/g, "");
+  const ym = saleDateISO.replace(/-/g, "").slice(0, 6);
   const existingRows = await db
     .select({
       transferRef: supplyTransfers.transferRef,
     })
     .from(supplyTransfers)
-    .where(sql`${supplyTransfers.transferRef} LIKE ${`XFER-${ymd}-%`}`);
+    .where(
+      sql`(${supplyTransfers.transferRef} LIKE ${`TRF-${ym}__-%`} OR ${supplyTransfers.transferRef} LIKE ${`XFER-${ym}__-%`})`
+    );
 
   const transferRef = allocateTransferRef(
     saleDateISO,
@@ -203,6 +206,7 @@ export async function createTransfer(
     const [created] = await tx
       .insert(supplyTransfers)
       .values({
+        requestId: payload.requestId ?? null,
         transferRef,
         fromFactoryKey: payload.fromFactoryKey,
         toFactoryKey: payload.toFactoryKey,
@@ -236,6 +240,7 @@ export async function createTransfer(
       const [created] = await tx
         .insert(supplyTransfers)
         .values({
+          requestId: payload.requestId ?? null,
           transferRef,
           fromFactoryKey: payload.fromFactoryKey,
           toFactoryKey: payload.toFactoryKey,
@@ -344,6 +349,17 @@ export async function receiveTransfer(
       })
       .where(eq(supplyTransfers.id, toTransfer.id))
       .returning();
+
+    if (updated.requestId) {
+      await tx.execute(
+        sql`UPDATE supply_requests
+            SET status = 'fulfilled',
+                fulfilled_at = NOW(),
+                updated_at = NOW()
+            WHERE id = ${updated.requestId}
+              AND status = 'approved'`
+      );
+    }
 
     for (const item of receivedItems) {
       if (item.quantityReceived <= 0) continue;

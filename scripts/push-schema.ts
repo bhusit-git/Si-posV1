@@ -13,7 +13,9 @@
 import postgres from "postgres";
 import { spawnSync } from "child_process";
 
-const SCHEMA_PATH = "./src/db/schema.ts";
+const SCHEMA_PATH =
+  process.env.SCHEMA_PATH_OVERRIDE?.trim() || "./src/db/schema.ts";
+const SHOULD_SANITIZE = process.env.SCHEMA_PUSH_SANITIZE !== "false";
 
 type SchemaTarget = {
   envVar: string;
@@ -216,7 +218,9 @@ for (const t of targets) {
 async function main() {
   let failures = 0;
   for (const t of targets) {
-    const sanitized = await sanitizeLegacyData(t.label, t.url);
+    const sanitized = SHOULD_SANITIZE
+      ? await sanitizeLegacyData(t.label, t.url)
+      : true;
     if (!sanitized || !pushSchema(t.label, t.url)) {
       failures++;
     }

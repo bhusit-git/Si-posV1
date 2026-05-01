@@ -74,7 +74,7 @@ export const createTransactionSchema = z.object({
     if (!data.transferRef || !TRANSFER_REF_REGEX.test(data.transferRef.trim())) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "รหัสโอนต้องเป็นรูปแบบ XFER-YYYYMMDD-###",
+        message: "รหัสโอนต้องเป็นรูปแบบ TRF-YYYYMMDD-###",
         path: ["transferRef"],
       });
     }

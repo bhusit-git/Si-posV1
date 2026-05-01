@@ -74,7 +74,7 @@ describe("transaction request contracts", () => {
     });
 
     expect(result).toEqual({
-      error: "transferRef: รหัสโอนต้องเป็นรูปแบบ XFER-YYYYMMDD-###",
+      error: "transferRef: รหัสโอนต้องเป็นรูปแบบ TRF-YYYYMMDD-###",
     });
   });
 
@@ -83,7 +83,7 @@ describe("transaction request contracts", () => {
       customerId: 1,
       items: [{ productTypeId: 1, quantity: 10, unitPrice: 100 }],
       transactionType: "transfer_out",
-      transferRef: "XFER-20260326-001",
+      transferRef: "TRF-20260326-001",
       saleDate: "2026-03-26",
       saleTime: "10:00:00",
     });
@@ -91,7 +91,7 @@ describe("transaction request contracts", () => {
     expect(result).toEqual({
       data: expect.objectContaining({
         transactionType: "transfer_out",
-        transferRef: "XFER-20260326-001",
+        transferRef: "TRF-20260326-001",
       }),
     });
   });

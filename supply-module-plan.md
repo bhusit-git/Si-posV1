@@ -153,9 +153,10 @@ src/
 │   │   ├── layout.tsx                ← Supply layout + nav แยกจาก POS
 │   │   ├── supply/page.tsx           ← Overview / dashboard
 │   │   ├── supply/stock/page.tsx     ← Stock คงเหลือ
-│   │   ├── supply/items/page.tsx     ← Catalog ของใช้
+│   │   ├── supply/items/page.tsx     ← Catalog ของใช้ (admin master data)
 │   │   ├── supply/requests/
-│   │   │   ├── page.tsx              ← รายการใบเบิก
+│   │   │   ├── page.tsx              ← รายการใบเบิก (history + tabs)
+│   │   │   ├── new/page.tsx          ← Catalog UI + Requisition Cart (ใหม่)
 │   │   │   └── [id]/page.tsx         ← Detail + approval
 │   │   └── supply/transfers/
 │   │       ├── page.tsx              ← รายการ transfer
@@ -181,6 +182,18 @@ src/
 │       ├── stock-engine.ts
 │       ├── request-engine.ts
 │       └── transfer-engine.ts
+│
+├── components/
+│   └── supply/                       ← Supply UI components (ใหม่ทั้งหมด)
+│       ├── supply-shell.tsx          ← wrapper layout + factory context display
+│       ├── supply-sidebar.tsx        ← sidebar nav ของ supply โดยเฉพาะ
+│       ├── stock-balance-grid.tsx    ← grid cards stock คงเหลือ
+│       ├── supply-catalog-card.tsx   ← product card ใน requisition catalog
+│       ├── supply-cart-drawer.tsx    ← cart sidebar (Sheet/Drawer จาก shadcn)
+│       ├── request-status-tabs.tsx   ← tabs filter สถานะใบเบิก
+│       ├── request-approval-panel.tsx ← panel approve/reject + signature
+│       ├── transfer-receive-dialog.tsx ← dialog ยืนยันรับของ
+│       └── supply-alert-widget.tsx   ← widget KPI สำหรับ POS dashboard
 │
 └── shared/db/schema/
     └── index.ts                      ← เพิ่ม supply tables ต่อท้าย
@@ -240,6 +253,7 @@ export const supplyItems = pgTable("supply_items", {
   name: text("name").notNull(),
   unit: text("unit").notNull(),              // ใบ, ขวด, กล่อง, ชิ้น
   category: text("category"),               // สารเคมี, อุปกรณ์, บรรจุภัณฑ์
+  imageUrl: text("image_url"),              // nullable — รูปภาพสินค้าใน catalog
   linkedProductTypeId: integer("linked_product_type_id")
     .references(() => productTypes.id),     // nullable — link ถุงกระสอบ (read-only)
   lowStockThreshold: integer("low_stock_threshold").notNull().default(0),
@@ -300,7 +314,7 @@ export const supplyRequests = pgTable(
     factoryKey: text("factory_key").notNull(),
     requestType: supplyRequestTypeEnum("request_type").notNull().default("internal_factory"),
     targetFactoryKey: text("target_factory_key"), // required เมื่อเป็น cross_factory
-    requesterName: text("requester_name"),        // ชื่อคนงาน/แผนกที่ขอใช้จริง
+    requesterName: text("requester_name").notNull(), // ชื่อคนงาน/แผนกที่ขอใช้จริง
     createdBy: integer("created_by")
       .notNull()
       .references(() => users.id),
@@ -590,9 +604,15 @@ export const POST = withErrorHandler(async (req) => {
 ### Routes
 
 ```
-GET  /api/supply/items              list active items (admin/manager/office)
+GET  /api/supply/items              list items (admin/manager/office only)
+                                    ?activeOnly=true → กรอง isActive
+                                    response รวม currentStock: number
+                                    (aggregate SUM จาก supply_stock_ledger
+                                     ต่อ factoryKey ของ user ที่ request)
+                                    role factory ไม่มีสิทธิ์ใช้ Supply module
 POST /api/supply/items              create (admin only)
 PUT  /api/supply/items/[id]         update (admin only)
+                                    รองรับ imageUrl field
 
 GET  /api/supply/stock              balances per factory
                                     ?factoryKey=si (admin ดูได้ทุก factory)
@@ -602,14 +622,21 @@ POST /api/supply/stock/adjust       manual adjustment (admin only)
 
 GET  /api/supply/requests           list + filter
                                     ?status=pending&factoryKey=si
-POST /api/supply/requests           create draft
+POST /api/supply/requests           create request
                                     body: {
                                       requestType,
                                       targetFactoryKey?,
-                                      requesterName?,
+                                      requesterName,
                                       items: [{ supplyItemId, quantity }],
                                       note
                                     }
+                                    → ถ้ามาจาก cart ให้ส่ง status = "pending" ทันที
+                                      (ข้าม draft เพราะ user ยืนยันแล้วใน cart)
+                                    → ถ้าต้องการ save draft ให้ส่ง status = "draft"
+                                    → validate `requesterName` ก่อน insert
+                                      ถ้าไม่มีให้ return 400
+                                    → ถ้า `requestType = cross_factory`
+                                      ต้องมี `targetFactoryKey`
 
 GET  /api/supply/requests/[id]      detail + items + timeline
 POST /api/supply/requests/[id]      action ใน body:
@@ -654,6 +681,7 @@ GET  /api/supply/transfers/stuck    transfer ที่ค้างใน "sendin
 | transfer: receive/reject | ✓ | ✓ | ✓ | — |
 
 RBAC notes:
+- `GET /api/supply/items` ใช้ได้เฉพาะ `admin / manager / office`
 - `request: create` หมายถึง manager/office เป็นคนทำใบเบิกแทน worker
 - `cross_factory request` ถูกสร้างจากโรงงานผู้ขอ แต่ผู้ approve ต้องเป็นฝั่งโรงงานที่รับเรื่อง
 - `transfer: create` เป็นสิทธิ์ของโรงงานต้นทางที่กำลังส่งของ ไม่ใช่สิทธิ์เฉพาะ SI โดย hard-code
@@ -711,10 +739,79 @@ supply.transfer.reject
 ### `/supply/requests` — ใบเบิก
 
 - Tabs: ร่าง | รออนุมัติ | อนุมัติแล้ว | ปฏิเสธ | เสร็จสิ้น
-- ปุ่ม "สร้างใบเบิกใหม่" → form เลือก `เบิกในโรงงาน` หรือ `เบิกข้ามโรงงาน`
-- form ต้องมีช่อง `ผู้ขอใช้จริง` และ auto-fill `ผู้สร้างเอกสาร`
-- ถ้าเป็น `เบิกข้ามโรงงาน` ต้องเลือก `target factory`
+- ปุ่ม "สร้างใบเบิกใหม่" → พาไปหน้า `/supply/requests/new` (Catalog UI)
 - แต่ละ row → link ไป detail
+
+### `/supply/requests/new` — Catalog & Requisition Cart
+
+> **Desktop only** — ยังไม่รองรับมือถือใน version นี้
+
+Layout (desktop):
+```
+┌──────────┬────────────────────────────────┬──────────────────┐
+│ Category │  Search bar                    │                  │
+│ sidebar  ├────────────────────────────────┤  Cart Drawer     │
+│ (20%)   │  Grid: SupplyCatalogCard (80%) │  (เปิดเมื่อกด)   │
+│          │  col-3 หรือ col-4             │                  │
+└──────────┴────────────────────────────────┴──────────────────┘
+```
+
+**SupplyCatalogCard component:**
+- ชื่อสินค้า (ตัวหนา)
+- รูปภาพ หรือ category icon ถ้าไม่มีรูป (`imageUrl` nullable)
+- ยอดคงเหลือ (`currentStock`) — สีเทา
+- `IF currentStock <= 0` → Card จาง + ปุ่ม disabled + label "ของหมด"
+- `IF ยังไม่เลือก` → ปุ่มเต็ม card "เบิกของ"
+- `IF เลือกแล้ว` → ปุ่ม `[ - ]  <qty>  [ + ]`
+- `IF qty >= currentStock` → ปุ่ม `[ + ]` disabled
+
+**Floating Cart button:**
+- มุมขวาล่าง sticky
+- แสดงเมื่อมีของในตะกร้า: "ตะกร้า (N รายการ)" สีเขียว
+- กดแล้วเปิด `SupplyCartDrawer`
+
+**SupplyCartDrawer component (Sheet จาก shadcn/ui):**
+- เลื่อนออกจากขวา
+- Header: "สรุปรายการเบิก"
+- เป็น multi-step drawer ใน panel เดิม ไม่ต้องสร้างหน้าใหม่
+- Step 1: ตรวจรายการสินค้า
+  - แต่ละ item แก้ qty ได้ หรือกดลบ
+- Step 2: เลือก `requestType`
+  - `เบิกในโรงงาน`
+  - `เบิกข้ามโรงงาน`
+  - ถ้าเลือก `เบิกข้ามโรงงาน` ให้แสดง dropdown `targetFactory`
+- Step 3: กรอก `requesterName` (required)
+- Step 4: กรอก Textarea "หมายเหตุ / เหตุผลการเบิก" (required)
+- Step 5: ปุ่ม "ส่งคำขอ" เต็มความกว้าง → `POST /api/supply/requests` status=pending
+- หลัง submit → redirect กลับ `/supply/requests` พร้อมแสดง toast สถานะ pending
+
+**Frontend State (useRequisitionCart):**
+```typescript
+// src/lib/supply/use-requisition-cart.ts
+// ใช้ React state หรือ Zustand (ตามแนวทางโปรเจกต์เดิม)
+interface RequisitionCartStore {
+  items: { supplyItemId: number; quantity: number; name: string; unit: string }[]
+  requestType: "internal_factory" | "cross_factory"
+  targetFactoryKey?: "si" | "bearing" | "ktk"
+  requesterName: string
+  note: string
+  actions: {
+    addItem(item): void
+    removeItem(supplyItemId: number): void
+    updateQuantity(supplyItemId: number, qty: number): void
+    setRequestType(type): void
+    setTargetFactoryKey(factoryKey): void
+    setRequesterName(name): void
+    setNote(note): void
+    clearCart(): void
+  }
+}
+```
+
+> **Server-side validation:** quantity validation ต้องทำทั้ง client และ server
+> client ป้องกัน UX, server ป้องกัน race condition (stock อาจเปลี่ยนระหว่าง user เลือกอยู่)
+> client ต้อง disable submit ถ้า `requesterName` ว่าง, `note` ว่าง,
+> หรือกรณี `cross_factory` ที่ยังไม่ได้เลือก `targetFactory`
 
 `/supply/requests/[id]` — Detail
 - แสดง items + qty ที่ขอ vs qty ที่อนุมัติ
@@ -730,10 +827,13 @@ supply.transfer.reject
 - แต่ละ row pending_receive → ปุ่ม "ยืนยันรับของ" → dialog กรอก qty รับจริงต่อ item
 - แสดง shipped vs received เมื่อ status = received/confirmed
 
-### `/supply/items` — Catalog (admin)
+### `/supply/items` — Master Data Catalog (admin)
 
-- Table: ชื่อ, unit, category, threshold, link product_type, active toggle
-- ปุ่ม "เพิ่มของใช้" → dialog form
+> หน้านี้คือหน้าจัดการ catalog ของใช้ทั้งหมด ต่างจาก `/supply/requests/new`
+> ที่เป็น catalog สำหรับพนักงานเบิกของ
+
+- Table: ชื่อ, unit, category, threshold, imageUrl, link product_type, active toggle
+- ปุ่ม "เพิ่มของใช้" → dialog form (รวมช่อง imageUrl)
 - ปุ่ม edit ต่อ row → dialog
 
 ---
@@ -894,12 +994,18 @@ action: "supply.seed-items"
 | Supply vs Product types | แยก supply_items + linkedProductTypeId | รักษา boundary ระหว่าง module |
 | Low stock threshold | Per-factory (supplyStockThresholds) + global fallback | แต่ละโรงงานมีความต้องการต่างกัน |
 | Approval | Single approver + required signature | เรียบง่าย แต่มี accountability |
-| Request ownership | เก็บทั้ง requesterName และ createdBy | คนงานเป็นผู้ขอใช้จริง แต่ manager/office เป็นคนทำเอกสาร |
+| Request ownership | เก็บทั้ง requesterName (required) และ createdBy | คนงานเป็นผู้ขอใช้จริง แต่ manager/office เป็นคนทำเอกสาร |
 | Stock deduction timing | ตัด stock ตอน fulfil หรือส่ง transfer จริง | ตรงกับ operation หน้างานและป้องกัน stock หายก่อนจ่ายจริง |
 | Bag return → Supply | Manual convert โดย admin เท่านั้น | ถุงคืนจากลูกค้าเป็น "ถุงมือสอง" ต้องคัดก่อน |
 | POS bag_ledger integration | ยังไม่ทำ auto-sync/auto-convert | กัน scope ไหล และคง boundary ให้ Supply/POS แยกกันก่อน |
 | Code separation | Route group (supply) แยกจาก (dashboard) | Mini ERP pattern — module ชัดเจน ไม่ปนกัน |
 | Stock calculation | Ledger-based SUM + index ตอนนี้ | เรียบง่าย snapshot เป็น TD-001 ทำเมื่อ query ช้า |
+
+| Requisition UX | Shopping cart (catalog + multi-step cart drawer) | ใช้งานง่ายและยังรองรับ internal/cross-factory request ใน flow เดียว |
+| imageUrl | เพิ่ม imageUrl nullable ใน supply_items | รองรับ catalog UX ใน Phase 3 |
+| Mobile support | Desktop only ใน version นี้ | โรงงานใช้คอม ไม่จำเป็นต้องรองรับมือถือตอนนี้ |
+| Cart submit status | ส่ง status=pending ทันที (ข้าม draft) | user ยืนยันแล้วใน cart ไม่จำเป็นต้องมี draft step |
+| currentStock ใน API | รวมใน GET /api/supply/items response | ลด round-trip และ simplify catalog page |
 
 ---
 

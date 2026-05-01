@@ -35,6 +35,7 @@ export interface ApiErrorResponseBody {
   error: string;
   requestId?: string;
   diagnostic?: ApiErrorDiagnostic;
+  debugMessage?: string;
 }
 
 interface PgLikeError extends RecordLike {
@@ -517,6 +518,7 @@ export function parseApiErrorResponse(value: unknown): ApiErrorResponseBody | nu
 
   const error = toText(rec.error);
   const requestId = toText(rec.requestId);
+  const debugMessage = toText(rec.debugMessage);
   const diagnosticRec = asRecord(rec.diagnostic);
   const diagnostic = diagnosticRec
     ? {
@@ -540,6 +542,7 @@ export function parseApiErrorResponse(value: unknown): ApiErrorResponseBody | nu
     error: error || "เกิดข้อผิดพลาดภายในระบบ",
     requestId: requestId || undefined,
     diagnostic,
+    debugMessage: debugMessage || undefined,
   };
 }
 
@@ -561,6 +564,7 @@ export function buildApiErrorDescription(
   const meta = formatApiDiagnosticMeta(payload);
   if (meta) lines.push(meta);
   if (payload?.diagnostic?.hint) lines.push(payload.diagnostic.hint);
+  if (payload?.debugMessage) lines.push(`Debug: ${payload.debugMessage}`);
   return lines.join("\n");
 }
 

@@ -15,8 +15,8 @@ const mocks = vi.hoisted(() => ({
   buildBagLedgerWrites: vi.fn(() => []),
   summarizeSaleBagFlow: vi.fn(() => ({ bagsReturned: 0, bagsOut: 0, bagsBought: 0 })),
   reverseBagLedgerEntry: vi.fn(),
-  allocateTransferRef: vi.fn(() => "XFER-20260326-001"),
-  buildTransferNote: vi.fn(() => "XFER|ref=XFER-20260326-001"),
+  allocateTransferRef: vi.fn(() => "TRF-20260326-001"),
+  buildTransferNote: vi.fn(() => "XFER|ref=TRF-20260326-001"),
   getTransferAccountingStatus: vi.fn(() => "pending"),
   isActiveInvoiceCreditCustomer: vi.fn(() => true),
   parseTransferNote: vi.fn(() => null),
@@ -61,7 +61,7 @@ vi.mock("@/lib/transfer-utils", () => ({
   buildTransferNote: mocks.buildTransferNote,
   getTransferAccountingStatus: mocks.getTransferAccountingStatus,
   parseTransferNote: mocks.parseTransferNote,
-  TRANSFER_REF_REGEX: /^XFER-\d{8}-\d{3}$/,
+  TRANSFER_REF_REGEX: /^(?:TRF|XFER)-\d{8}-\d{3}$/,
 }));
 
 vi.mock("@/lib/invoice-credit-rollout", () => ({

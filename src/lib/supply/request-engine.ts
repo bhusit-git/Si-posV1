@@ -13,6 +13,12 @@ export type SupplyRequestItemRow = typeof supplyRequestItems.$inferSelect;
 
 type RequestDb = Pick<DrizzleDb, "select" | "update" | "transaction">;
 
+function resolveStockFactoryKey(request: SupplyRequestRow): string {
+  return request.requestType === "cross_factory"
+    ? request.targetFactoryKey || ""
+    : request.factoryKey;
+}
+
 function trimSignature(signature: string): string {
   return signature.trim();
 }
@@ -136,9 +142,14 @@ export async function approveRequest(
     }
 
     const itemApprovals = buildApprovedQuantityMap(requestItems, approvedQtys);
+    const stockFactoryKey = resolveStockFactoryKey(request);
+    if (!stockFactoryKey) {
+      throw new Error("Cross-factory request is missing target factory");
+    }
+
     const stockCheck = await checkStockSufficiency(
       tx,
-      request.factoryKey,
+      stockFactoryKey,
       itemApprovals
         .filter((item) => item.quantityApproved > 0)
         .map((item) => ({
@@ -158,19 +169,6 @@ export async function approveRequest(
           quantityApproved: item.quantityApproved,
         })
         .where(eq(supplyRequestItems.id, item.requestItemId));
-
-      if (item.quantityApproved > 0) {
-        await writeStockLedger(tx, {
-          factoryKey: request.factoryKey,
-          supplyItemId: item.supplyItemId,
-          type: "internal_use",
-          quantity: -item.quantityApproved,
-          referenceId: request.id,
-          referenceType: "request",
-          note: request.note,
-          createdBy: approver.id,
-        });
-      }
     }
 
     const [updated] = await tx
@@ -218,10 +216,42 @@ export async function fulfillRequest(
   requestId: number,
   user: Pick<SessionUser, "id">
 ): Promise<SupplyRequestRow> {
-  void user;
   return db.transaction(async (tx) => {
     const request = await loadRequest(tx, requestId);
     requireStatus(request, "approved");
+    if (request.requestType !== "internal_factory") {
+      throw new Error("Cross-factory request cannot be fulfilled directly");
+    }
+
+    const requestItems = await loadRequestItems(tx, requestId);
+    if (requestItems.length === 0) {
+      throw new Error(`Supply request ${requestId} has no items`);
+    }
+
+    const fulfilItems = requestItems
+      .map((item) => ({
+        supplyItemId: item.supplyItemId,
+        quantity: item.quantityApproved ?? item.quantityRequested,
+      }))
+      .filter((item) => item.quantity > 0);
+
+    const stockCheck = await checkStockSufficiency(tx, request.factoryKey, fulfilItems);
+    if (!stockCheck.sufficient) {
+      throw new Error("Insufficient supply stock for fulfilment");
+    }
+
+    for (const item of fulfilItems) {
+      await writeStockLedger(tx, {
+        factoryKey: request.factoryKey,
+        supplyItemId: item.supplyItemId,
+        type: "internal_use",
+        quantity: -item.quantity,
+        referenceId: request.id,
+        referenceType: "request",
+        note: request.note,
+        createdBy: user.id,
+      });
+    }
 
     const [updated] = await tx
       .update(supplyRequests)

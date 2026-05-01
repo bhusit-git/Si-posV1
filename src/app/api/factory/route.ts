@@ -6,9 +6,28 @@ import { getSupericeEnv } from "@/lib/config/env";
 
 /** GET /api/factory – returns current factory + list of available factories */
 export async function GET() {
+  const session = await getSession();
   const factories = getFactories();
   const cookieStore = await cookies();
-  const current = cookieStore.get(FACTORY_COOKIE)?.value || factories[0]?.key || "default";
+  const validFactoryKeys = new Set(factories.map((factory) => factory.key));
+  const sessionFactoryKey =
+    session?.factoryKey && validFactoryKeys.has(session.factoryKey)
+      ? session.factoryKey
+      : null;
+  const cookieFactoryKey = cookieStore.get(FACTORY_COOKIE)?.value || null;
+  const cookieCurrent =
+    cookieFactoryKey && validFactoryKeys.has(cookieFactoryKey) ? cookieFactoryKey : null;
+  const current = sessionFactoryKey || cookieCurrent || factories[0]?.key || "default";
+
+  if (current !== cookieFactoryKey) {
+    cookieStore.set(FACTORY_COOKIE, current, {
+      httpOnly: false,
+      secure: getSupericeEnv().isProduction,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 365,
+      path: "/",
+    });
+  }
 
   return NextResponse.json({
     current,

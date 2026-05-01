@@ -21,7 +21,10 @@ function buildRequest(overrides: Partial<typeof supplyRequests.$inferSelect> = {
   return {
     id: 41,
     factoryKey: "si",
-    requestedBy: 7,
+    requestType: "internal_factory" as const,
+    targetFactoryKey: null,
+    requesterName: "แผนกผลิต",
+    createdBy: 7,
     status: "draft" as const,
     note: "เบิกใช้งานประจำวัน",
     approvedBy: null,
@@ -123,7 +126,7 @@ describe("request-engine", () => {
     expect(db.transaction).toHaveBeenCalledTimes(1);
   });
 
-  it("approveRequest stores signature and writes internal-use ledger entries", async () => {
+  it("approveRequest stores signature without moving stock yet", async () => {
     const request = buildRequest({ status: "pending" });
     const items = [
       buildRequestItem({ id: 1001, supplyItemId: 3, quantityRequested: 5 }),
@@ -170,27 +173,7 @@ describe("request-engine", () => {
         { supplyItemId: 4, quantity: 2 },
       ]
     );
-    expect(writeStockLedger).toHaveBeenCalledTimes(2);
-    expect(writeStockLedger).toHaveBeenNthCalledWith(1, db.tx, {
-      factoryKey: "si",
-      supplyItemId: 3,
-      type: "internal_use",
-      quantity: -3,
-      referenceId: request.id,
-      referenceType: "request",
-      note: request.note,
-      createdBy: 9,
-    });
-    expect(writeStockLedger).toHaveBeenNthCalledWith(2, db.tx, {
-      factoryKey: "si",
-      supplyItemId: 4,
-      type: "internal_use",
-      quantity: -2,
-      referenceId: request.id,
-      referenceType: "request",
-      note: request.note,
-      createdBy: 9,
-    });
+    expect(writeStockLedger).not.toHaveBeenCalled();
   });
 
   it("approveRequest fails when stock is insufficient", async () => {
@@ -233,11 +216,37 @@ describe("request-engine", () => {
       approverSignature: "pin",
       approvedAt: new Date("2026-04-30T09:00:00.000Z"),
     });
-    const db = createRequestDb(request);
+    const items = [
+      buildRequestItem({ id: 1001, supplyItemId: 3, quantityRequested: 5, quantityApproved: 3 }),
+      buildRequestItem({ id: 1002, supplyItemId: 4, quantityRequested: 2, quantityApproved: 2 }),
+    ];
+    const db = createRequestDb(request, items);
+
+    vi.mocked(checkStockSufficiency).mockResolvedValue({
+      sufficient: true,
+      shortfalls: [],
+    });
+    vi.mocked(writeStockLedger).mockResolvedValue({
+      id: 1,
+      factoryKey: "si",
+      supplyItemId: 3,
+      type: "internal_use",
+      quantity: -3,
+      referenceId: request.id,
+      referenceType: "request",
+      note: request.note,
+      createdBy: 7,
+      createdAt: new Date("2026-04-30T10:00:00.000Z"),
+    });
 
     const result = await fulfillRequest(db as never, request.id, { id: 7 });
 
     expect(result.status).toBe("fulfilled");
     expect(result.fulfilledAt).toBeInstanceOf(Date);
+    expect(checkStockSufficiency).toHaveBeenCalledWith(db.tx, "si", [
+      { supplyItemId: 3, quantity: 3 },
+      { supplyItemId: 4, quantity: 2 },
+    ]);
+    expect(writeStockLedger).toHaveBeenCalledTimes(2);
   });
 });

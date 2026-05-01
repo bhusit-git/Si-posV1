@@ -67,12 +67,19 @@ export default function SupplySettingsPage() {
         body: JSON.stringify(payload),
       });
       if (!response.ok) {
-        throw new Error("บันทึกการตั้งค่าไม่สำเร็จ");
+        const body = await response.json().catch(() => null);
+        const message =
+          typeof body?.error === "string"
+            ? body.error
+            : typeof body?.debugMessage === "string"
+            ? body.debugMessage
+            : "บันทึกการตั้งค่าไม่สำเร็จ";
+        throw new Error(message);
       }
       window.dispatchEvent(new CustomEvent("superice:supply-item-settings-updated"));
       return true;
-    } catch {
-      toast.error("บันทึกการตั้งค่าไม่สำเร็จ");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "บันทึกการตั้งค่าไม่สำเร็จ");
       return false;
     } finally {
       setSaving(false);
@@ -129,9 +136,9 @@ export default function SupplySettingsPage() {
       />
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <Card className="border-slate-200 shadow-none">
+        <Card className="border-slate-200 shadow-none dark:border-slate-800 dark:bg-slate-950/60">
           <CardHeader>
-            <CardTitle className="text-lg">หน่วยนับ</CardTitle>
+            <CardTitle className="text-lg dark:text-slate-100">หน่วยนับ</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-2">
@@ -153,24 +160,33 @@ export default function SupplySettingsPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               {units.length > 0 ? units.map((unit) => (
-                <button
+                <div
                   key={unit}
-                  type="button"
-                  onClick={() => void removeValue(unit, units, setUnits, "units")}
-                  className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 transition hover:border-red-200 hover:text-red-600"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 >
-                  {unit}
-                </button>
+                  <span>{unit}</span>
+                  <button
+                    type="button"
+                    onClick={() => void removeValue(unit, units, setUnits, "units")}
+                    className="rounded-full border border-slate-200 px-2 py-0.5 text-xs text-slate-500 transition hover:border-red-200 hover:text-red-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-red-500/50 dark:hover:text-red-300"
+                    aria-label={`ลบหน่วยนับ ${unit}`}
+                  >
+                    ลบ
+                  </button>
+                </div>
               )) : (
-                <p className="text-sm text-slate-500">ยังไม่ได้ตั้งหน่วยนับเอง</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">ยังไม่ได้ตั้งหน่วยนับเอง</p>
               )}
             </div>
+            {units.length > 0 ? (
+              <p className="text-xs text-slate-500 dark:text-slate-400">กดปุ่มลบเพื่อเอาหน่วยนับออกจากรายการตั้งค่า</p>
+            ) : null}
             {detectedUnits.length > 0 ? (
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-sm font-medium text-slate-800">หน่วยที่พบจาก Catalog ปัจจุบัน</p>
+              <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/80">
+                <p className="text-sm font-medium text-slate-800 dark:text-slate-100">หน่วยที่พบจาก Catalog ปัจจุบัน</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {detectedUnits.map((unit) => (
-                    <Badge key={unit} variant="outline" className="bg-white">{unit}</Badge>
+                    <Badge key={unit} variant="outline" className="bg-white dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">{unit}</Badge>
                   ))}
                 </div>
               </div>
@@ -178,9 +194,9 @@ export default function SupplySettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 shadow-none">
+        <Card className="border-slate-200 shadow-none dark:border-slate-800 dark:bg-slate-950/60">
           <CardHeader>
-            <CardTitle className="text-lg">หมวดหมู่</CardTitle>
+            <CardTitle className="text-lg dark:text-slate-100">หมวดหมู่</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-2">
@@ -202,24 +218,33 @@ export default function SupplySettingsPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               {categories.length > 0 ? categories.map((category) => (
-                <button
+                <div
                   key={category}
-                  type="button"
-                  onClick={() => void removeValue(category, categories, setCategories, "categories")}
-                  className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 transition hover:border-red-200 hover:text-red-600"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 >
-                  {category}
-                </button>
+                  <span>{category}</span>
+                  <button
+                    type="button"
+                    onClick={() => void removeValue(category, categories, setCategories, "categories")}
+                    className="rounded-full border border-slate-200 px-2 py-0.5 text-xs text-slate-500 transition hover:border-red-200 hover:text-red-600 dark:border-slate-700 dark:text-slate-300 dark:hover:border-red-500/50 dark:hover:text-red-300"
+                    aria-label={`ลบหมวดหมู่ ${category}`}
+                  >
+                    ลบ
+                  </button>
+                </div>
               )) : (
-                <p className="text-sm text-slate-500">ยังไม่ได้ตั้งหมวดหมู่เอง</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">ยังไม่ได้ตั้งหมวดหมู่เอง</p>
               )}
             </div>
+            {categories.length > 0 ? (
+              <p className="text-xs text-slate-500 dark:text-slate-400">กดปุ่มลบเพื่อเอาหมวดหมู่ออกจากรายการตั้งค่า</p>
+            ) : null}
             {detectedCategories.length > 0 ? (
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-sm font-medium text-slate-800">หมวดที่พบจาก Catalog ปัจจุบัน</p>
+              <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/80">
+                <p className="text-sm font-medium text-slate-800 dark:text-slate-100">หมวดที่พบจาก Catalog ปัจจุบัน</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {detectedCategories.map((category) => (
-                    <Badge key={category} variant="outline" className="bg-white">{category}</Badge>
+                    <Badge key={category} variant="outline" className="bg-white dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">{category}</Badge>
                   ))}
                 </div>
               </div>

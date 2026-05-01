@@ -1,5 +1,5 @@
 export const TRANSFER_CUSTOMER_PREFIX = "XFER->";
-export const TRANSFER_REF_REGEX = /^XFER-\d{8}-\d{3}$/;
+export const TRANSFER_REF_REGEX = /^(?:TRF|XFER)-\d{8}-\d{3}$/;
 export type TransferAccountingStatus = "open" | "closed";
 const LEGACY_ACCOUNTING_CLOSED_TAG = "[acct=closed]";
 export const TRANSFER_ALLOWLIST_CUSTOMER_IDS = new Set<number>([
@@ -131,6 +131,7 @@ export function applyLegacyAccountingStatusToNote(
 }
 
 interface ParsedTransferRef {
+  prefix: string;
   ymd: string;
   seq: number;
 }
@@ -138,27 +139,32 @@ interface ParsedTransferRef {
 function parseTransferRef(ref: string | null | undefined): ParsedTransferRef | null {
   if (!ref) return null;
   const upper = ref.trim().toUpperCase();
-  const match = /^XFER-(\d{8})-(\d{3})$/.exec(upper);
+  const match = /^(TRF|XFER)-(\d{8})-(\d{3})$/.exec(upper);
   if (!match) return null;
-  return { ymd: match[1], seq: parseInt(match[2], 10) };
+  return { prefix: match[1], ymd: match[2], seq: parseInt(match[3], 10) };
 }
 
 function formatTransferRef(ymd: string, seq: number): string {
-  return `XFER-${ymd}-${String(seq).padStart(3, "0")}`;
+  return `TRF-${ymd}-${String(seq).padStart(3, "0")}`;
+}
+
+function getMonthKey(dateISO: string): string {
+  return dateISO.replace(/-/g, "").slice(0, 6);
 }
 
 export function buildLocalTransferRef(dateISO: string): string {
   const ymd = dateISO.replace(/-/g, "");
+  const monthKey = getMonthKey(dateISO);
   if (typeof window === "undefined") {
-    const seq = Date.now() % 1000;
+    const seq = (Date.now() % 999) + 1;
     return formatTransferRef(ymd, seq);
   }
 
-  const key = `superice-transfer-seq-${ymd}`;
+  const key = `superice-transfer-seq-${monthKey}`;
   const raw = window.localStorage.getItem(key);
   const prev = raw !== null ? parseInt(raw, 10) : NaN;
-  const prevSafe = Number.isFinite(prev) && prev >= 0 && prev <= 999 ? prev : -1;
-  const next = (prevSafe + 1) % 1000;
+  const prevSafe = Number.isFinite(prev) && prev >= 1 && prev <= 999 ? prev : 0;
+  const next = prevSafe >= 999 ? 1 : prevSafe + 1;
   window.localStorage.setItem(key, String(next));
   return formatTransferRef(ymd, next);
 }
@@ -169,20 +175,21 @@ export function allocateTransferRef(
   preferredRef?: string | null
 ): string | null {
   const ymd = saleDateISO.replace(/-/g, "");
+  const monthKey = getMonthKey(saleDateISO);
   const usedSeq = new Set<number>();
   for (const ref of existingRefs) {
     const parsed = parseTransferRef(ref);
-    if (parsed && parsed.ymd === ymd) usedSeq.add(parsed.seq);
+    if (parsed && parsed.ymd.slice(0, 6) === monthKey) usedSeq.add(parsed.seq);
   }
 
   const preferredParsed = parseTransferRef(preferredRef || null);
-  if (preferredParsed && preferredParsed.ymd === ymd && !usedSeq.has(preferredParsed.seq)) {
+  if (preferredParsed && preferredParsed.ymd.slice(0, 6) === monthKey && !usedSeq.has(preferredParsed.seq)) {
     return formatTransferRef(ymd, preferredParsed.seq);
   }
 
-  const start = preferredParsed && preferredParsed.ymd === ymd ? preferredParsed.seq : 0;
-  for (let i = 0; i < 1000; i += 1) {
-    const seq = (start + i) % 1000;
+  const start = preferredParsed && preferredParsed.ymd.slice(0, 6) === monthKey ? preferredParsed.seq : 1;
+  for (let i = 0; i < 999; i += 1) {
+    const seq = ((start - 1 + i) % 999) + 1;
     if (!usedSeq.has(seq)) return formatTransferRef(ymd, seq);
   }
   return null;

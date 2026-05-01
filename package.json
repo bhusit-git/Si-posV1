@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "db:push": "tsx scripts/push-schema.ts",
+    "db:push:supply": "SCHEMA_PATH_OVERRIDE=./src/shared/db/schema/supply-entry.ts SCHEMA_PUSH_SANITIZE=false tsx scripts/push-schema.ts",
     "db:seed-users": "tsx scripts/seed-factory-users.ts",
     "baseline:freeze": "tsx scripts/freeze-baseline.ts",
     "backfill:transaction-kind": "tsx scripts/backfill-transaction-kind.ts",

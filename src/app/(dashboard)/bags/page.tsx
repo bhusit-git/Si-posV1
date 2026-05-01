@@ -40,6 +40,7 @@ import { toast } from "sonner";
 import type { BagBalance, BagEntry } from "@/lib/types";
 import { matchesCustomerQuery } from "@/lib/filter-utils";
 import { withRunningBagBalance } from "@/lib/bag-flow";
+import type { SessionUser } from "@/lib/auth";
 
 type SortKey = "balance" | "name" | "totalOut";
 type BagBalanceApiRow = Omit<
@@ -85,6 +86,7 @@ function formatLedgerDateTimeParts(value: string): { date: string; time: string 
 }
 
 export default function BagsPage() {
+  const [authUser, setAuthUser] = useState<SessionUser | null>(null);
   const [balances, setBalances] = useState<BagBalance[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<BagBalance | null>(null);
   const [entries, setEntries] = useState<BagEntry[]>([]);
@@ -104,6 +106,14 @@ export default function BagsPage() {
   const [adjustQty, setAdjustQty] = useState("");
   const [adjustNote, setAdjustNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [supplyOpen, setSupplyOpen] = useState(false);
+  const [supplyItems, setSupplyItems] = useState<
+    Array<{ id: number; name: string; linkedProductTypeId: number | null }>
+  >([]);
+  const [supplyItemId, setSupplyItemId] = useState("");
+  const [supplyQty, setSupplyQty] = useState("");
+  const [supplyNote, setSupplyNote] = useState("");
+  const [supplySaving, setSupplySaving] = useState(false);
 
   // Clear dialog
   const [clearOpen, setClearOpen] = useState(false);
@@ -113,6 +123,20 @@ export default function BagsPage() {
 
   useEffect(() => {
     loadBalances();
+    fetch("/api/auth")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => setAuthUser(data))
+      .catch(() => undefined);
+    fetch("/api/supply/items")
+      .then((response) => (response.ok ? response.json() : []))
+      .then((data) => {
+        setSupplyItems(
+          Array.isArray(data)
+            ? data.filter((item) => item.linkedProductTypeId != null)
+            : []
+        );
+      })
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -201,6 +225,42 @@ export default function BagsPage() {
       toast.error("เกิดข้อผิดพลาด", { description: "กรุณาลองใหม่" });
     } finally {
       setSaving(false);
+    }
+  }
+
+  function openSupplyConvertDialog(customer: BagBalance) {
+    setAdjustCustomerId(customer.customerId);
+    setSupplyQty("");
+    setSupplyNote(`นำถุงเข้า Supply จากหน้าติดตามถุงของ ${customer.customerName}`);
+    setSupplyItemId((current) => current || (supplyItems[0] ? String(supplyItems[0].id) : ""));
+    setSupplyOpen(true);
+  }
+
+  async function handleSupplyImport() {
+    if (!supplyItemId || !supplyQty) return;
+    setSupplySaving(true);
+    try {
+      const res = await fetch("/api/supply/stock/adjust", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          supplyItemId: Number(supplyItemId),
+          quantity: Number(supplyQty),
+          type: "bag_return_manual",
+          note: supplyNote || "นำเข้า Supply Stock จากหน้าถุง",
+        }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload.error || "นำเข้า Supply ไม่สำเร็จ");
+      }
+      toast.success("นำเข้า Supply Stock สำเร็จ");
+      setSupplyOpen(false);
+      setSupplyQty("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "นำเข้า Supply ไม่สำเร็จ");
+    } finally {
+      setSupplySaving(false);
     }
   }
 
@@ -498,6 +558,67 @@ export default function BagsPage() {
                         </div>
                       </DialogContent>
                     </Dialog>
+                    {authUser?.role === "admin" && supplyItems.length > 0 ? (
+                      <Dialog open={supplyOpen} onOpenChange={setSupplyOpen}>
+                        <DialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openSupplyConvertDialog(selectedCustomer)}
+                          >
+                            นำเข้า Supply Stock
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>นำถุงเข้า Supply Stock</DialogTitle>
+                            <DialogDescription>
+                              ใช้สำหรับบันทึกรับถุงเข้า stock ของ supply แบบ manual เท่านั้น
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 pt-2">
+                            <div className="space-y-2">
+                              <Label>Supply item</Label>
+                              <Select value={supplyItemId} onValueChange={setSupplyItemId}>
+                                <SelectTrigger><SelectValue placeholder="เลือกของใช้" /></SelectTrigger>
+                                <SelectContent>
+                                  {supplyItems.map((item) => (
+                                    <SelectItem key={item.id} value={String(item.id)}>
+                                      {item.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>จำนวน (ใบ)</Label>
+                              <Input
+                                type="number"
+                                value={supplyQty}
+                                onChange={(e) => setSupplyQty(e.target.value)}
+                                placeholder="0"
+                                min={1}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>หมายเหตุ</Label>
+                              <Input
+                                value={supplyNote}
+                                onChange={(e) => setSupplyNote(e.target.value)}
+                                placeholder="เหตุผลการนำเข้า Supply"
+                              />
+                            </div>
+                            <Button
+                              onClick={handleSupplyImport}
+                              disabled={supplySaving || !supplyItemId || !supplyQty}
+                              className="w-full"
+                            >
+                              {supplySaving ? "กำลังบันทึก..." : "บันทึกเข้า Supply"}
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    ) : null}
                   </div>
                 </div>
               </CardHeader>
