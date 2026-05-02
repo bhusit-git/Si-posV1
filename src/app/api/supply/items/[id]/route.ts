@@ -3,38 +3,72 @@ import { eq, sql } from "drizzle-orm";
 
 import type { DrizzleDB } from "@/db";
 import { supplyItems } from "@/db/schema";
+import { extractPostgresError } from "@/lib/api-error-diagnostics";
 import { requireAdmin } from "@/lib/api-auth";
 import { withErrorHandler } from "@/lib/api-utils";
 import { logAudit } from "@/lib/audit";
 import {
   badRequest,
+  ensureSupplyItemDetailColumns,
+  normalizeSupplyItemType,
   parseInteger,
   parseOptionalString,
   resolveSupplyWriteContext,
 } from "@/lib/supply/route-helpers";
 
-function isMissingImageUrlColumnError(error: unknown): boolean {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: string }).code === "42703"
-  ) {
-    const column = "column" in error ? (error as { column?: unknown }).column : undefined;
-    return column === "image_url" || column === "imageUrl";
+function isSupplyItemsSchemaDriftError(error: unknown): boolean {
+  const pg = extractPostgresError(error);
+  if (pg?.code === "42703") return true;
+
+  let current: unknown = error;
+  let depth = 0;
+  while (current && depth < 6) {
+    const message = current instanceof Error ? current.message : String(current ?? "");
+    if (message.includes("42703")) return true;
+    if (message.includes("column") && message.includes("does not exist")) return true;
+
+    current =
+      typeof current === "object" && current !== null && "cause" in current
+        ? (current as { cause?: unknown }).cause
+        : null;
+    depth += 1;
   }
 
-  const message = error instanceof Error ? error.message : String(error ?? "");
-  return message.includes("image_url") && message.includes("does not exist");
+  return false;
 }
 
-async function findSupplyItemById(db: DrizzleDB, supplyItemId: number) {
+interface SupplyItemRouteRow {
+  id: number;
+  name: string;
+  unit: string;
+  category: string | null;
+  itemCode: string | null;
+  imageUrl: string | null;
+  itemType: string | null;
+  brand: string | null;
+  model: string | null;
+  serialNumber: string | null;
+  barcode: string | null;
+  details: string | null;
+  purchasedAt: string | null;
+  warrantyExpiresAt: string | null;
+  packSize: number;
+  borrowLimit: number;
+  linkedProductTypeId: number | null;
+  lowStockThreshold: number;
+  isActive: boolean;
+}
+
+async function findSupplyItemById(
+  db: DrizzleDB,
+  supplyItemId: number
+): Promise<SupplyItemRouteRow | undefined> {
   try {
     const findFirst = db.query?.supplyItems?.findFirst;
     if (findFirst) {
-      return await findFirst({
+      return (await findFirst({
         where: eq(supplyItems.id, supplyItemId),
-      });
+      })) as SupplyItemRouteRow | undefined;
     }
 
     return (
@@ -43,9 +77,9 @@ async function findSupplyItemById(db: DrizzleDB, supplyItemId: number) {
         .from(supplyItems)
         .where(eq(supplyItems.id, supplyItemId))
         .limit(1)
-    )[0];
+    )[0] as SupplyItemRouteRow | undefined;
   } catch (error) {
-    if (!isMissingImageUrlColumnError(error)) throw error;
+    if (!isSupplyItemsSchemaDriftError(error)) throw error;
 
     const rows = await db.execute(sql`
       SELECT
@@ -55,6 +89,16 @@ async function findSupplyItemById(db: DrizzleDB, supplyItemId: number) {
         category,
         item_code AS "itemCode",
         NULL::text AS "imageUrl",
+        NULL::text AS "itemType",
+        NULL::text AS "brand",
+        NULL::text AS "model",
+        NULL::text AS "serialNumber",
+        NULL::text AS "barcode",
+        NULL::text AS "details",
+        NULL::text AS "purchasedAt",
+        NULL::text AS "warrantyExpiresAt",
+        1::int AS "packSize",
+        0::int AS "borrowLimit",
         linked_product_type_id AS "linkedProductTypeId",
         low_stock_threshold AS "lowStockThreshold",
         is_active AS "isActive"
@@ -63,7 +107,7 @@ async function findSupplyItemById(db: DrizzleDB, supplyItemId: number) {
       LIMIT 1
     `);
 
-    return Array.from(rows)[0];
+    return Array.from(rows)[0] as unknown as SupplyItemRouteRow | undefined;
   }
 }
 
@@ -92,6 +136,26 @@ export const PUT = withErrorHandler(async function PUT(
   const category = body?.category === undefined ? existing.category : parseOptionalString(body.category);
   const itemCode = body?.itemCode === undefined ? existing.itemCode : parseOptionalString(body.itemCode);
   const imageUrl = body?.imageUrl === undefined ? existing.imageUrl : parseOptionalString(body.imageUrl);
+  const itemType =
+    body?.itemType === undefined ? normalizeSupplyItemType(existing.itemType) : normalizeSupplyItemType(body.itemType);
+  const brand = body?.brand === undefined ? existing.brand : parseOptionalString(body.brand);
+  const model = body?.model === undefined ? existing.model : parseOptionalString(body.model);
+  const serialNumber =
+    body?.serialNumber === undefined ? existing.serialNumber : parseOptionalString(body.serialNumber);
+  const barcode = body?.barcode === undefined ? existing.barcode : parseOptionalString(body.barcode);
+  const details = body?.details === undefined ? existing.details : parseOptionalString(body.details);
+  const purchasedAt =
+    body?.purchasedAt === undefined ? existing.purchasedAt : parseOptionalString(body.purchasedAt);
+  const warrantyExpiresAt =
+    body?.warrantyExpiresAt === undefined
+      ? existing.warrantyExpiresAt
+      : parseOptionalString(body.warrantyExpiresAt);
+  const packSize =
+    body?.packSize === undefined ? existing.packSize ?? 1 : Math.max(1, parseInteger(body.packSize) ?? 1);
+  const borrowLimit =
+    body?.borrowLimit === undefined
+      ? existing.borrowLimit ?? 0
+      : Math.max(0, parseInteger(body.borrowLimit) ?? 0);
   const linkedProductTypeId =
     body?.linkedProductTypeId === undefined
       ? existing.linkedProductTypeId
@@ -111,31 +175,37 @@ export const PUT = withErrorHandler(async function PUT(
     category,
     itemCode,
     imageUrl,
+    itemType,
+    brand,
+    model,
+    serialNumber,
+    barcode,
+    details,
+    purchasedAt,
+    warrantyExpiresAt,
+    packSize,
+    borrowLimit,
     linkedProductTypeId,
     lowStockThreshold,
     isActive,
     updatedAt: new Date(),
   };
 
-  let updated;
+  let updated: SupplyItemRouteRow;
   try {
-    [updated] = await context.db
+    [updated] = (await context.db
       .update(supplyItems)
       .set(baseValues)
       .where(eq(supplyItems.id, supplyItemId))
-      .returning();
+      .returning()) as SupplyItemRouteRow[];
   } catch (error) {
-    if (!isMissingImageUrlColumnError(error)) throw error;
-
-    [updated] = await context.db
+    if (!isSupplyItemsSchemaDriftError(error)) throw error;
+    await ensureSupplyItemDetailColumns(context.db);
+    [updated] = (await context.db
       .update(supplyItems)
-      .set({
-        ...baseValues,
-        imageUrl: undefined,
-      })
+      .set(baseValues)
       .where(eq(supplyItems.id, supplyItemId))
-      .returning();
-    updated = { ...updated, imageUrl: null };
+      .returning()) as SupplyItemRouteRow[];
   }
 
   await logAudit(
@@ -152,6 +222,16 @@ export const PUT = withErrorHandler(async function PUT(
         category,
         itemCode,
         imageUrl,
+        itemType,
+        brand,
+        model,
+        serialNumber,
+        barcode,
+        details,
+        purchasedAt,
+        warrantyExpiresAt,
+        packSize,
+        borrowLimit,
         linkedProductTypeId,
         lowStockThreshold,
         isActive,

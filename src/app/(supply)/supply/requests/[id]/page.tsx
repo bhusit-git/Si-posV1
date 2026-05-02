@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatSupplyRequestRef } from "@/lib/supply/request-ref";
+import { formatBaseQuantityWithPack } from "@/lib/supply/unit-conversion";
 
 interface RequestDetail {
   id: number;
@@ -32,6 +33,12 @@ interface RequestDetail {
     quantityRequested: number;
     quantityApproved: number | null;
     note: string | null;
+    supplyItem: {
+      id: number;
+      name: string;
+      unit: string;
+      packSize: number;
+    } | null;
   }>;
 }
 
@@ -123,9 +130,32 @@ export default function SupplyRequestDetailPage() {
                 <TableBody>
                   {detail.items.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell>#{item.supplyItemId}</TableCell>
-                      <TableCell>{item.quantityRequested}</TableCell>
-                      <TableCell>{item.quantityApproved ?? "-"}</TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-slate-900">
+                            {item.supplyItem?.name || `#${item.supplyItemId}`}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {item.supplyItem?.unit || "หน่วยไม่ระบุ"}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {formatBaseQuantityWithPack(
+                          item.quantityRequested,
+                          item.supplyItem?.unit || "หน่วย",
+                          item.supplyItem?.packSize || 1
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {item.quantityApproved == null
+                          ? "-"
+                          : formatBaseQuantityWithPack(
+                              item.quantityApproved,
+                              item.supplyItem?.unit || "หน่วย",
+                              item.supplyItem?.packSize || 1
+                            )}
+                      </TableCell>
                       <TableCell>{item.note || "-"}</TableCell>
                     </TableRow>
                   ))}
@@ -157,8 +187,15 @@ export default function SupplyRequestDetailPage() {
                     <div className="space-y-2">
                       {detail.items.map((item) => (
                         <div key={item.id} className="flex items-center gap-3 rounded-2xl border border-slate-100 px-3 py-2">
-                          <span className="min-w-0 flex-1 text-sm text-slate-600">รายการ #{item.supplyItemId}</span>
+                          <span className="min-w-0 flex-1 text-sm text-slate-600">
+                            {item.supplyItem?.name || `รายการ #${item.supplyItemId}`}
+                          </span>
                           <Input className="w-28" value={quantities[item.id] || ""} onChange={(event) => setQuantities((current) => ({ ...current, [item.id]: event.target.value }))} />
+                          <span className="text-xs text-slate-500">
+                            {item.supplyItem
+                              ? `สูงสุด ${formatBaseQuantityWithPack(item.quantityRequested, item.supplyItem.unit, item.supplyItem.packSize)}`
+                              : ""}
+                          </span>
                         </div>
                       ))}
                     </div>

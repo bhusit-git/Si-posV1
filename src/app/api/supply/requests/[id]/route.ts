@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 
 import type { DrizzleDB } from "@/db";
-import { supplyRequestItems, supplyRequests } from "@/db/schema";
+import { supplyItems, supplyRequestItems, supplyRequests } from "@/db/schema";
 import { requireManagerUp } from "@/lib/api-auth";
 import { withErrorHandler } from "@/lib/api-utils";
 import { logAudit } from "@/lib/audit";
@@ -22,6 +22,12 @@ import {
   resolveSupplyWriteContext,
 } from "@/lib/supply/route-helpers";
 
+type SupplyRequestItemRow = typeof supplyRequestItems.$inferSelect;
+type SupplyItemRow = typeof supplyItems.$inferSelect;
+type SupplyRequestItemWithSupplyItem = SupplyRequestItemRow & {
+  supplyItem: Pick<SupplyItemRow, "id" | "name" | "unit" | "packSize"> | null;
+};
+
 function normalizeApprovedQtys(input: unknown) {
   if (!Array.isArray(input)) return [];
   return input
@@ -32,6 +38,43 @@ function normalizeApprovedQtys(input: unknown) {
       return { requestItemId, quantity };
     })
     .filter((item): item is { requestItemId: number; quantity: number } => item !== null);
+}
+
+async function loadSupplyItemsByIds(db: DrizzleDB, ids: number[]) {
+  if (ids.length === 0) return [];
+
+  const findMany = db.query?.supplyItems?.findMany;
+  if (findMany) {
+    return findMany({
+      where: inArray(supplyItems.id, ids),
+    });
+  }
+
+  return db.select().from(supplyItems).where(inArray(supplyItems.id, ids));
+}
+
+async function attachSupplyItemDetails(
+  db: DrizzleDB,
+  items: SupplyRequestItemRow[]
+): Promise<SupplyRequestItemWithSupplyItem[]> {
+  const supplyItemIds = Array.from(new Set(items.map((item) => item.supplyItemId)));
+  const supplyItemRows = await loadSupplyItemsByIds(db, supplyItemIds);
+  const supplyItemById = new Map(
+    supplyItemRows.map((item) => [
+      item.id,
+      {
+        id: item.id,
+        name: item.name,
+        unit: item.unit,
+        packSize: item.packSize,
+      },
+    ])
+  );
+
+  return items.map((item) => ({
+    ...item,
+    supplyItem: supplyItemById.get(item.supplyItemId) || null,
+  }));
 }
 
 async function loadDetail(db: typeof import("@/db").db, requestId: number) {
@@ -52,7 +95,7 @@ async function loadDetail(db: typeof import("@/db").db, requestId: number) {
 
     return {
       ...requestRow,
-      items,
+      items: await attachSupplyItemDetails(db as DrizzleDB, items),
       createdByUser: null,
       approvedByUser: null,
     };
@@ -63,6 +106,9 @@ async function loadDetail(db: typeof import("@/db").db, requestId: number) {
     with: {
       items: {
         orderBy: [asc(supplyRequestItems.id)],
+        with: {
+          supplyItem: true,
+        },
       },
       createdByUser: true,
       approvedByUser: true,

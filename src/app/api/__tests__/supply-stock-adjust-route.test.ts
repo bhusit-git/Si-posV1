@@ -56,7 +56,7 @@ describe("POST /api/supply/stock/adjust", () => {
       factoryKey: "si",
       db,
     });
-    db.query.supplyItems.findFirst.mockResolvedValue({ id: 9, name: "Bag" });
+    db.query.supplyItems.findFirst.mockResolvedValue({ id: 9, name: "Bag", packSize: 12 });
   });
 
   it("rejects negative purchase_in quantities", async () => {
@@ -85,5 +85,55 @@ describe("POST /api/supply/stock/adjust", () => {
     expect(res.status).toBe(400);
     expect(body.error).toBe("ประเภทการปรับยอดไม่ถูกต้อง");
     expect(mocks.writeStockLedger).not.toHaveBeenCalled();
+  });
+
+  it("rejects unknown quantity units", async () => {
+    const res = await POST(makeRequest({
+      supplyItemId: 9,
+      quantity: 2,
+      quantityUnit: "packs",
+      type: "purchase_in",
+    }));
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe("หน่วยจำนวนไม่ถูกต้อง");
+    expect(mocks.writeStockLedger).not.toHaveBeenCalled();
+  });
+
+  it("rejects fractional quantities instead of truncating them", async () => {
+    const res = await POST(makeRequest({
+      supplyItemId: 9,
+      quantity: 1.5,
+      quantityUnit: "pack",
+      type: "purchase_in",
+    }));
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe("กรุณาระบุจำนวนเต็มที่ถูกต้อง");
+    expect(mocks.writeStockLedger).not.toHaveBeenCalled();
+  });
+
+  it("converts pack quantities into base units before writing stock", async () => {
+    mocks.writeStockLedger.mockResolvedValue({ id: 99, quantity: 24 });
+
+    const res = await POST(makeRequest({
+      supplyItemId: 9,
+      quantity: 2,
+      quantityUnit: "pack",
+      type: "purchase_in",
+      note: "รับเข้า 2 แพ็ค",
+    }));
+
+    expect(res.status).toBe(201);
+    expect(mocks.writeStockLedger).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({
+        supplyItemId: 9,
+        quantity: 24,
+        type: "purchase_in",
+      })
+    );
   });
 });

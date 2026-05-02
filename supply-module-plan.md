@@ -63,8 +63,11 @@ worker ที่โรงงานปลายทางแจ้ง manager
 - `request` ต้องเก็บทั้ง `ผู้ขอใช้จริง` และ `ผู้สร้างเอกสาร`
 - `request` ต้องรู้ว่าเป็น `internal_factory` หรือ `cross_factory`
 - `cross_factory request` ต้องระบุ `targetFactoryKey` ว่าส่งไปขอที่โรงงานไหน
+- `request` ต้องรองรับการเป็น `draft` แบบแก้ไขต่อได้จริง ไม่ใช่มีแค่ status ใน schema
+- `request` และ `transfer` ควรเผื่อช่องสำหรับ `เหตุผล`, `metadata หน้างาน`, และ `attachment references`
 - `approve request` **ยังไม่ตัด stock**
 - `stock ledger` จะถูกเขียนตอน `fulfil request` (กรณีเบิกในโรงงาน) หรือ `create transfer` (กรณีเบิกข้ามโรงงาน)
+- `durable item` ไม่ควรถูกมองว่า fulfil แล้วจบเสมอ ต้องมี borrow/return lifecycle ตามหลังได้
 - technical plan เดิมที่มองว่า transfer ถูกสร้างตรงจากโรงงานหลักโดยไม่ผ่าน request ต้องถือว่า **ไม่ตรงกับ operation จริง**
 
 ---
@@ -135,6 +138,47 @@ supply_items: { name: "ถุงกระสอบ", linkedProductTypeId: 3 }
 - `internal request` ใช้การ fulfil เพื่อจบงาน
 - `cross-factory request` ใช้ linked transfer เพื่อจบงาน
 - อย่าตัด stock ตอน approve เพราะของยังไม่ถูกจ่าย/ส่งจริง
+
+### 6. Supply Item Type — Two Operational Types Only
+
+`supply_items.itemType` ไม่ใช่หมวดหมู่สินค้า แต่เป็นตัวกำหนดพฤติกรรมการเบิก:
+
+- `consumable` = ใช้แล้วหมดไป เมื่อตัดจ่ายแล้วถือว่าใช้สิ้นเปลือง ไม่ต้องคืน
+- `durable` = อุปกรณ์ใช้งานซ้ำ / เบิกแล้วต้องคืน ต้องติดตามการคืนหลังเบิก
+
+ห้ามเพิ่ม type แยกเช่น `tool`, `spare_part`, หรือหมวดอื่นใน field นี้ เพราะสิ่งเหล่านั้นเป็น `category`
+ไม่ใช่ operational type. ถ้ามี legacy value เหล่านี้ ให้ map กลับเป็น `durable`.
+
+### 7. Draft Is A First-Class Request State
+
+- `draft` ต้องไม่เป็นแค่ enum สำรองใน DB
+- user ต้องสามารถ `save draft`, `edit draft`, `add/remove items`, และ `submit ภายหลัง` ได้
+- detail page และ list page ต้องแยก draft ที่ยังไม่ส่งอนุมัติออกจาก pending อย่างชัดเจน
+
+### 8. Operational Metadata Must Be Explicit
+
+- field `note` อย่างเดียวไม่พอสำหรับงานหน้างานบางเคส
+- request และ transfer ควรเผื่อ:
+  - `reasonCode` หรือ equivalent
+  - `metadata` แบบ JSON สำหรับข้อมูลเฉพาะเคส
+  - `attachments` เป็น reference list ไปยังไฟล์/รูป/เอกสาร
+- version แรกอาจยังไม่ต้องมี file upload เต็มรูปแบบ แต่ schema และ API contract ควรเปิดทางไว้
+
+### 9. Transfer Stuck Visibility Is Part Of The Product, Not Only Ops API
+
+- transfer ที่ค้าง `sending` นานผิดปกติต้องไม่ซ่อนอยู่แค่ใน API
+- admin/office ต้องเห็น warning ที่หน้า overview และ transfers list
+- ต้องมี flow inspect / retry / cancel ที่ชัดเจนใน UI
+
+### 10. Durable Items Need A Borrow / Return Workflow
+
+- `durable` ไม่ใช่แค่ label ใน catalog
+- หลัง fulfil ของ durable item ต้องสามารถ:
+  - สร้าง borrow record
+  - track ของที่ยังไม่คืน
+  - คืนบางส่วนได้
+  - บันทึกสภาพของ / ผู้รับคืน / ลายเซ็นผู้รับคืน
+  - แจ้ง overdue ได้
 
 ---
 
@@ -253,6 +297,9 @@ export const supplyItems = pgTable("supply_items", {
   name: text("name").notNull(),
   unit: text("unit").notNull(),              // ใบ, ขวด, กล่อง, ชิ้น
   category: text("category"),               // สารเคมี, อุปกรณ์, บรรจุภัณฑ์
+  itemType: text("item_type").notNull().default("consumable"),
+                                             // consumable = ใช้แล้วหมดไป
+                                             // durable = อุปกรณ์ใช้งานซ้ำ / เบิกแล้วต้องคืน
   imageUrl: text("image_url"),              // nullable — รูปภาพสินค้าใน catalog
   linkedProductTypeId: integer("linked_product_type_id")
     .references(() => productTypes.id),     // nullable — link ถุงกระสอบ (read-only)
@@ -319,7 +366,10 @@ export const supplyRequests = pgTable(
       .notNull()
       .references(() => users.id),
     status: supplyRequestStatusEnum("status").notNull().default("draft"),
+    reasonCode: text("reason_code"),                  // optional — ใช้แยกเหตุผลมาตรฐาน
     note: text("note"),
+    metadata: jsonb("metadata").notNull().default({}),   // ข้อมูลหน้างานเพิ่มเติม
+    attachments: jsonb("attachments").notNull().default([]), // [{name,url,type}]
     approvedBy: integer("approved_by").references(() => users.id),
     approverSignature: text("approver_signature"),   // required ตอน approve
     approvedAt: timestamp("approved_at", { withTimezone: true }),
@@ -362,7 +412,10 @@ export const supplyTransfers = pgTable(
     fromFactoryKey: text("from_factory_key").notNull(),
     toFactoryKey: text("to_factory_key").notNull(),
     status: supplyTransferStatusEnum("status").notNull().default("sent"),
+    reasonCode: text("reason_code"),
     note: text("note"),
+    metadata: jsonb("metadata").notNull().default({}),
+    attachments: jsonb("attachments").notNull().default([]),
     createdBy: integer("created_by")
       .notNull()
       .references(() => users.id),
@@ -394,6 +447,66 @@ export const supplyTransferItems = pgTable(
   },
   (table) => [
     index("idx_supply_transfer_items_transfer").on(table.transferId),
+  ]
+);
+
+// Durable item borrow / return tracking
+export const supplyBorrowStatusEnum = pgEnum("supply_borrow_status", [
+  "pending",
+  "borrowing",
+  "partial_returned",
+  "returned",
+  "overdue",
+  "rejected",
+  "cancelled",
+]);
+
+export const supplyBorrows = pgTable(
+  "supply_borrows",
+  {
+    id: serial("id").primaryKey(),
+    requestId: integer("request_id").references(() => supplyRequests.id),
+    factoryKey: text("factory_key").notNull(),
+    requesterName: text("requester_name").notNull(),
+    createdBy: integer("created_by")
+      .notNull()
+      .references(() => users.id),
+    status: supplyBorrowStatusEnum("status").notNull().default("pending"),
+    approvedBy: integer("approved_by").references(() => users.id),
+    approverSignature: text("approver_signature"),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    returnedAt: timestamp("returned_at", { withTimezone: true }),
+    returnCondition: text("return_condition"),
+    receiverSignature: text("receiver_signature"),
+    note: text("note"),
+    metadata: jsonb("metadata").notNull().default({}),
+    attachments: jsonb("attachments").notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_supply_borrows_factory_status").on(table.factoryKey, table.status),
+    index("idx_supply_borrows_due_at").on(table.dueAt, table.status),
+  ]
+);
+
+export const supplyBorrowItems = pgTable(
+  "supply_borrow_items",
+  {
+    id: serial("id").primaryKey(),
+    borrowId: integer("borrow_id")
+      .notNull()
+      .references(() => supplyBorrows.id),
+    supplyItemId: integer("supply_item_id")
+      .notNull()
+      .references(() => supplyItems.id),
+    quantityBorrowed: integer("quantity_borrowed").notNull(),
+    quantityReturned: integer("quantity_returned").notNull().default(0),
+    note: text("note"),
+  },
+  (table) => [
+    index("idx_supply_borrow_items_borrow").on(table.borrowId),
   ]
 );
 ```
@@ -628,6 +741,7 @@ POST /api/supply/requests           create request
                                       targetFactoryKey?,
                                       requesterName,
                                       items: [{ supplyItemId, quantity }],
+                                      reasonCode?,
                                       note
                                     }
                                     → ถ้ามาจาก cart ให้ส่ง status = "pending" ทันที
@@ -639,6 +753,16 @@ POST /api/supply/requests           create request
                                       ต้องมี `targetFactoryKey`
 
 GET  /api/supply/requests/[id]      detail + items + timeline
+PUT  /api/supply/requests/[id]      update draft only
+                                    body: {
+                                      requesterName?,
+                                      targetFactoryKey?,
+                                      reasonCode?,
+                                      note?,
+                                      metadata?,
+                                      attachments?,
+                                      items?
+                                    }
 POST /api/supply/requests/[id]      action ใน body:
                                     { action: "submit" }
                                     { action: "approve", approvedQtys: [...], signature }
@@ -649,7 +773,7 @@ POST /api/supply/requests/[id]      action ใน body:
 GET  /api/supply/transfers          list + filter
                                     ?status=pending_receive&toFactoryKey=bearing
 POST /api/supply/transfers          create จาก approved cross_factory request
-                                    body: { requestId, toFactoryKey, items: [...], note }
+                                    body: { requestId, toFactoryKey, items: [...], reasonCode?, note, metadata?, attachments? }
 
 GET  /api/supply/transfers/[id]     detail + items
 POST /api/supply/transfers/[id]     action ใน body:
@@ -658,6 +782,19 @@ POST /api/supply/transfers/[id]     action ใน body:
 
 GET  /api/supply/transfers/stuck    transfer ที่ค้างใน "sending" > 5 นาที (admin only)
                                     ใช้สำหรับ reconciliation และ manual resolve
+POST /api/supply/transfers/stuck/[id]
+                                    action ใน body:
+                                    { action: "retry" }
+                                    { action: "cancel" }
+
+GET  /api/supply/borrows            list + filter
+POST /api/supply/borrows            create borrow request สำหรับ durable item
+GET  /api/supply/borrows/[id]       detail + items + timeline
+POST /api/supply/borrows/[id]       action ใน body:
+                                    { action: "approve", signature }
+                                    { action: "reject", note }
+                                    { action: "return", returnedQtys: [...], condition, receiverSignature, note }
+GET  /api/supply/borrows/overdue    รายการของค้างคืนเกินกำหนด
 ```
 
 ### RBAC Matrix
@@ -741,6 +878,7 @@ supply.transfer.reject
 - Tabs: ร่าง | รออนุมัติ | อนุมัติแล้ว | ปฏิเสธ | เสร็จสิ้น
 - ปุ่ม "สร้างใบเบิกใหม่" → พาไปหน้า `/supply/requests/new` (Catalog UI)
 - แต่ละ row → link ไป detail
+- draft row ต้องมี quick actions: `แก้ไข`, `ส่งอนุมัติ`, `ยกเลิก`
 
 ### `/supply/requests/new` — Catalog & Requisition Cart
 
@@ -781,9 +919,12 @@ Layout (desktop):
   - `เบิกข้ามโรงงาน`
   - ถ้าเลือก `เบิกข้ามโรงงาน` ให้แสดง dropdown `targetFactory`
 - Step 3: กรอก `requesterName` (required)
-- Step 4: กรอก Textarea "หมายเหตุ / เหตุผลการเบิก" (required)
+- Step 4: กรอก `reasonCode` และ Textarea "หมายเหตุ / เหตุผลการเบิก" (required)
+- Step 4.1: แนบ `metadata หน้างาน` เพิ่มได้ เช่น แผนก, เครื่องจักร, งานที่ใช้, reference ภายนอก
+- Step 4.2: แนบ `attachments` ได้อย่างน้อยในรูป reference/link ก่อน แม้ version แรกยังไม่ทำ upload เต็ม
 - Step 5: ปุ่ม "ส่งคำขอ" เต็มความกว้าง → `POST /api/supply/requests` status=pending
 - หลัง submit → redirect กลับ `/supply/requests` พร้อมแสดง toast สถานะ pending
+- ต้องมีปุ่ม `บันทึกร่าง` → `POST /api/supply/requests` status=draft และกลับมาแก้ต่อได้
 
 **Frontend State (useRequisitionCart):**
 ```typescript
@@ -816,6 +957,7 @@ interface RequisitionCartStore {
 `/supply/requests/[id]` — Detail
 - แสดง items + qty ที่ขอ vs qty ที่อนุมัติ
 - Timeline status (draft → pending → approved → fulfilled)
+- ถ้า status = `draft` ต้องแก้รายการ, requesterName, reasonCode, metadata, attachments ได้
 - Approval panel (office/manager/admin): กรอก qty อนุมัติต่อ item + signature field
 - ถ้าเป็น cross_factory request และ approved แล้ว ต้องมี panel "สร้าง Transfer จากใบเบิกนี้"
 - ปุ่ม approve (สีเขียว) / reject (สีแดง)
@@ -826,6 +968,19 @@ interface RequisitionCartStore {
 - ปุ่ม "สร้าง Transfer" ควรมาจาก approved cross_factory request เป็นหลัก
 - แต่ละ row pending_receive → ปุ่ม "ยืนยันรับของ" → dialog กรอก qty รับจริงต่อ item
 - แสดง shipped vs received เมื่อ status = received/confirmed
+- ถ้ามี transfer ค้าง `sending` > 5 นาที ต้องมี warning banner ด้านบนหน้า list
+- admin ต้องมี filter/view สำหรับ `stuck transfers`
+- detail page ต้องมี action `retry` / `cancel` สำหรับ stuck transfer
+
+### `/supply/borrows` — Durable Borrow / Return
+
+- Tabs: รออนุมัติ | กำลังยืม | คืนบางส่วน | คืนแล้ว | เกินกำหนด | ปฏิเสธ
+- list ต้องแสดงผู้ยืม, ของที่ยืม, due date, จำนวนคงค้าง
+- detail page ต้องรองรับ approve/reject
+- return dialog ต้องกรอกจำนวนคืนจริงต่อ item
+- รองรับ partial return
+- ต้องมี field `condition on return`, `receiver signature`, `note`
+- overdue ต้องมี badge/alert ชัด และมี quick filter
 
 ### `/supply/items` — Master Data Catalog (admin)
 
@@ -931,6 +1086,20 @@ status = "sending" + updatedAt < now - 5min
   → หรือ admin กด "retry" → ยิง createTransfer ใหม่
 ```
 
+### Borrow / Return Hardening
+
+```typescript
+// cron / scheduled job หรือ query-on-read
+// mark overdue durable borrows
+GET /api/supply/borrows/overdue
+// ดึง borrow ที่ dueAt < now และ status in ("borrowing", "partial_returned")
+// แสดงใน /supply overview และ /supply/borrows
+```
+
+- overdue durable borrow ต้องขึ้น alert ที่ overview
+- return action ต้อง idempotent เพื่อกัน double submit ตอนคืนของ
+- partial return ต้องคำนวณสถานะ `partial_returned` → `returned` อัตโนมัติ
+
 ### Tech Debt: SUM Performance [TD-001]
 
 ```
@@ -959,6 +1128,26 @@ action: "supply.seed-items"
 
 ---
 
+## Phase 6 — Durable Borrow / Return + Advanced Request UX
+**3-5 วัน | หลัง request/transfer flow หลักนิ่งแล้ว**
+
+### Scope
+
+- ทำ `draft editing flow` ให้ครบ
+- เพิ่ม `reasonCode / metadata / attachments references` ใน request และ transfer UI
+- ทำ borrow/return workflow สำหรับ `durable item`
+- เพิ่ม overdue alert และ operational visibility สำหรับของค้างคืน
+
+### Deliverables
+
+- `/supply/requests` และ `/supply/requests/[id]` รองรับ draft edit จนกว่าจะ submit
+- request/transfer form รองรับ metadata หน้างาน และ attachment references
+- `/supply/borrows` list/detail/action ครบ
+- approve borrow / reject borrow / return / partial return / overdue tracking
+- return flow บังคับ `condition` และ `receiverSignature`
+
+---
+
 ## Timeline Summary
 
 | Phase | งาน | เวลา | Dependency |
@@ -969,7 +1158,8 @@ action: "supply.seed-items"
 | 3 | UI 5 หน้า | 3-5 วัน | Phase 2 |
 | 4 | Integration 3 จุด | 1 วัน | Phase 3 |
 | 5 | Hardening | 1-2 วัน | Phase 4 |
-| **รวม** | | **~10-16 วัน** | |
+| 6 | Durable Borrow/Return + Draft/Metadata UX | 3-5 วัน | Phase 5 |
+| **รวม** | | **~13-21 วัน** | |
 
 ---
 
@@ -1005,6 +1195,10 @@ action: "supply.seed-items"
 | imageUrl | เพิ่ม imageUrl nullable ใน supply_items | รองรับ catalog UX ใน Phase 3 |
 | Mobile support | Desktop only ใน version นี้ | โรงงานใช้คอม ไม่จำเป็นต้องรองรับมือถือตอนนี้ |
 | Cart submit status | ส่ง status=pending ทันที (ข้าม draft) | user ยืนยันแล้วใน cart ไม่จำเป็นต้องมี draft step |
+| Draft support | ต้องมีทั้ง quick-submit และ save-draft/edit-draft | บางงานต้องเตรียมใบก่อนค่อยส่งอนุมัติ |
+| Operational metadata | request/transfer ต้องรองรับ reasonCode + metadata + attachment refs | note อย่างเดียวไม่พอสำหรับหน้างานจริง |
+| Transfer stuck visibility | ต้องมีทั้ง API และ UI warning/action | ปัญหา operational ต้องมองเห็นได้จากหน้าระบบ ไม่ใช่ซ่อนใน API |
+| Durable item lifecycle | durable ต้องมี borrow/return flow แยกจาก consumable | fulfil อย่างเดียวไม่พอ เพราะต้องติดตามของที่ต้องคืน |
 | currentStock ใน API | รวมใน GET /api/supply/items response | ลด round-trip และ simplify catalog page |
 
 ---

@@ -4,7 +4,7 @@ vi.mock("@/db", () => ({
   getDb: vi.fn(),
 }));
 
-import { CUSTOMER_BEHAVIOR_SCHEMA, withBehaviorDetails } from "@/lib/audit";
+import { CUSTOMER_BEHAVIOR_SCHEMA, logAudit, withBehaviorDetails } from "@/lib/audit";
 
 describe("withBehaviorDetails", () => {
   it("adds required behavior envelope fields", () => {
@@ -152,5 +152,55 @@ describe("withBehaviorDetails", () => {
     expect(firstBehavior.customerId).toBe(10);
     expect(secondBehavior.customerId).toBe(20);
     expect(first.username).toBe(second.username);
+  });
+});
+
+describe("logAudit", () => {
+  it("does not fail the caller when the audit table has not been migrated yet", async () => {
+    const values = vi.fn().mockRejectedValue({
+      code: "42P01",
+      message: 'relation "audit_log" does not exist',
+    });
+    const tx = {
+      insert: vi.fn(() => ({ values })),
+    };
+
+    await expect(
+      logAudit(
+        {
+          userId: 1,
+          username: "admin",
+          action: "supply.item.update",
+          entity: "supply_item",
+          entityId: 10,
+          details: { name: "ปากกา" },
+        },
+        tx as never
+      )
+    ).resolves.toBeUndefined();
+    expect(values).toHaveBeenCalledTimes(1);
+  });
+
+  it("still throws non-audit write failures", async () => {
+    const values = vi.fn().mockRejectedValue({
+      code: "23505",
+      message: "duplicate key value violates unique constraint",
+    });
+    const tx = {
+      insert: vi.fn(() => ({ values })),
+    };
+
+    await expect(
+      logAudit(
+        {
+          userId: 1,
+          username: "admin",
+          action: "sale.created",
+          entity: "transaction",
+          entityId: 22,
+        },
+        tx as never
+      )
+    ).rejects.toMatchObject({ code: "23505" });
   });
 });

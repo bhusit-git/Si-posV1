@@ -13,13 +13,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  convertDisplayQuantity,
+  convertToBaseQuantity,
+  formatBaseQuantityWithPack,
+  formatPackUnitLabel,
+  formatSelectedQuantity,
+  getMaxDisplayQuantity,
+  hasPackUnit,
+  normalizeQuantityUnit,
+  type SupplyQuantityUnit,
+} from "@/lib/supply/unit-conversion";
 
 interface StockBalanceRow {
   item: {
     id: number;
     name: string;
     unit: string;
+    packSize: number;
     category: string | null;
+    imageUrl?: string | null;
   };
   balance: number;
   threshold: number;
@@ -35,12 +48,37 @@ interface CartItem {
   supplyItemId: number;
   name: string;
   unit: string;
-  available: number;
+  packSize: number;
+  availableBase: number;
   quantity: number;
+  quantityUnit: SupplyQuantityUnit;
+  quantityBase: number;
 }
 
 function clampQuantity(value: number, max: number) {
   return Math.max(0, Math.min(Math.trunc(value), max));
+}
+
+function buildCartItem(row: StockBalanceRow, quantity: number, quantityUnit: SupplyQuantityUnit): CartItem {
+  return {
+    supplyItemId: row.item.id,
+    name: row.item.name,
+    unit: row.item.unit,
+    packSize: row.item.packSize,
+    availableBase: row.balance,
+    quantity,
+    quantityUnit,
+    quantityBase: convertToBaseQuantity(quantity, quantityUnit, row.item.packSize),
+  };
+}
+
+function getRowMaxQuantity(row: StockBalanceRow, quantityUnit: SupplyQuantityUnit) {
+  return getMaxDisplayQuantity(row.balance, quantityUnit, row.item.packSize);
+}
+
+function getInitialQuantityUnit(row: StockBalanceRow): SupplyQuantityUnit {
+  void row;
+  return "base";
 }
 
 export default function NewSupplyRequestPage() {
@@ -110,7 +148,7 @@ export default function NewSupplyRequestPage() {
   }, [activeCategory, query, rows]);
 
   const cartCount = useMemo(
-    () => cart.reduce((sum, item) => sum + item.quantity, 0),
+    () => cart.length,
     [cart]
   );
 
@@ -121,32 +159,55 @@ export default function NewSupplyRequestPage() {
     (requestType === "internal_factory" || targetFactoryKey.trim().length > 0);
 
   function updateCart(row: StockBalanceRow, nextQuantity: number) {
-    const quantity = clampQuantity(nextQuantity, row.balance);
     setCart((current) => {
       const existing = current.find((item) => item.supplyItemId === row.item.id);
+      const quantityUnit = existing?.quantityUnit || getInitialQuantityUnit(row);
+      const quantity = clampQuantity(nextQuantity, getRowMaxQuantity(row, quantityUnit));
       if (quantity <= 0) {
         return current.filter((item) => item.supplyItemId !== row.item.id);
       }
+      const nextItem = buildCartItem(row, quantity, quantityUnit);
       if (existing) {
         return current.map((item) =>
-          item.supplyItemId === row.item.id ? { ...item, quantity, available: row.balance } : item
+          item.supplyItemId === row.item.id ? nextItem : item
         );
       }
-      return [
-        ...current,
-        {
-          supplyItemId: row.item.id,
-          name: row.item.name,
-          unit: row.item.unit,
-          available: row.balance,
-          quantity,
-        },
-      ];
+      return [...current, nextItem];
     });
   }
 
-  function getCartQuantity(supplyItemId: number) {
-    return cart.find((item) => item.supplyItemId === supplyItemId)?.quantity || 0;
+  function updateCartUnit(row: StockBalanceRow, nextQuantityUnit: SupplyQuantityUnit) {
+    setCart((current) => {
+      const existing = current.find((item) => item.supplyItemId === row.item.id);
+      if (!existing) {
+        return current;
+      }
+
+      const maxQuantity = getRowMaxQuantity(row, nextQuantityUnit);
+      const nextQuantity = clampQuantity(
+        nextQuantityUnit === existing.quantityUnit
+          ? existing.quantity
+          : convertDisplayQuantity(
+              existing.quantity,
+              existing.quantityUnit,
+              nextQuantityUnit,
+              row.item.packSize
+            ),
+        maxQuantity
+      );
+      if (nextQuantity <= 0) {
+        return current.filter((item) => item.supplyItemId !== row.item.id);
+      }
+
+      const nextItem = buildCartItem(row, nextQuantity, nextQuantityUnit);
+      return current.map((item) =>
+        item.supplyItemId === row.item.id ? nextItem : item
+      );
+    });
+  }
+
+  function getCartItem(supplyItemId: number) {
+    return cart.find((item) => item.supplyItemId === supplyItemId) || null;
   }
 
   async function submitRequest() {
@@ -166,6 +227,7 @@ export default function NewSupplyRequestPage() {
           items: cart.map((item) => ({
             supplyItemId: item.supplyItemId,
             quantity: item.quantity,
+            quantityUnit: item.quantityUnit,
           })),
         }),
       });
@@ -237,7 +299,10 @@ export default function NewSupplyRequestPage() {
 
           <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
             {visibleRows.map((row) => {
-              const selectedQty = getCartQuantity(row.item.id);
+              const cartItem = getCartItem(row.item.id);
+              const selectedQty = cartItem?.quantity || 0;
+              const selectedUnit = cartItem?.quantityUnit || getInitialQuantityUnit(row);
+              const maxQuantity = getRowMaxQuantity(row, selectedUnit);
               const outOfStock = row.balance <= 0;
 
               return (
@@ -250,6 +315,21 @@ export default function NewSupplyRequestPage() {
                   }
                 >
                   <CardHeader className="space-y-3">
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                      {row.item.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={row.item.imageUrl}
+                          alt={row.item.name}
+                          className="h-32 w-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-32 items-center justify-center text-xs text-slate-400">
+                          ไม่มีรูปสินค้า
+                        </div>
+                      )}
+                    </div>
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <CardTitle className="text-base">{row.item.name}</CardTitle>
@@ -265,15 +345,45 @@ export default function NewSupplyRequestPage() {
                             : "border-slate-200 bg-slate-50 text-slate-600"
                         }
                       >
-                        {row.balance} {row.item.unit}
+                        {formatBaseQuantityWithPack(row.balance, row.item.unit, row.item.packSize)}
                       </Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
-                      threshold {row.threshold}
+                      threshold {formatBaseQuantityWithPack(row.threshold, row.item.unit, row.item.packSize)}
                       {outOfStock ? " · ของหมด" : row.isLow ? " · ใกล้หมด" : " · พร้อมเบิก"}
                     </div>
+                    {hasPackUnit(row.item.packSize) && getRowMaxQuantity(row, "pack") > 0 ? (
+                      <div className="space-y-2">
+                        <Label>หน่วยที่ต้องการเบิก</Label>
+                        <Select
+                          value={selectedUnit}
+                          onValueChange={(value) => {
+                            const nextUnit = normalizeQuantityUnit(value);
+                            if (cartItem) {
+                              updateCartUnit(row, nextUnit);
+                            }
+                          }}
+                          disabled={!cartItem}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="base">{row.item.unit}</SelectItem>
+                            <SelectItem value="pack">
+                              {formatPackUnitLabel(row.item.unit, row.item.packSize)}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {!cartItem ? (
+                          <p className="text-xs text-slate-500">
+                            กดเบิกของก่อน แล้วจะเลือกเบิกเป็น {row.item.unit} หรือแพ็คได้
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
 
                     {selectedQty <= 0 ? (
                       <Button
@@ -294,13 +404,13 @@ export default function NewSupplyRequestPage() {
                           -
                         </Button>
                         <div className="min-w-16 rounded-2xl bg-slate-50 px-4 py-2 text-center text-sm font-medium">
-                          {selectedQty}
+                          {selectedQty} {selectedUnit === "pack" ? "แพ็ค" : row.item.unit}
                         </div>
                         <Button
                           type="button"
                           variant="outline"
                           className="flex-1 rounded-2xl"
-                          disabled={selectedQty >= row.balance}
+                          disabled={selectedQty >= maxQuantity}
                           onClick={() => updateCart(row, selectedQty + 1)}
                         >
                           +
@@ -328,7 +438,7 @@ export default function NewSupplyRequestPage() {
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700">
-              {cart.length > 0 ? `ในตะกร้า ${cartCount} ชิ้น จาก ${cart.length} รายการ` : "ยังไม่มีสินค้าในตะกร้า"}
+              {cart.length > 0 ? `ในตะกร้า ${cartCount} รายการ` : "ยังไม่มีสินค้าในตะกร้า"}
             </div>
 
             <div className="space-y-3">
@@ -346,13 +456,49 @@ export default function NewSupplyRequestPage() {
                       <div>
                         <p className="font-medium text-slate-900">{item.name}</p>
                         <p className="mt-1 text-sm text-slate-500">
-                          คงเหลือ {item.available} {item.unit}
+                          คงเหลือ {formatBaseQuantityWithPack(item.availableBase, item.unit, item.packSize)}
                         </p>
                       </div>
                       <Badge variant="outline">
-                        {item.quantity} {item.unit}
+                        {formatSelectedQuantity(item.quantity, item.quantityUnit, item.unit, item.packSize)}
                       </Badge>
                     </div>
+                    {hasPackUnit(item.packSize) &&
+                    getMaxDisplayQuantity(item.availableBase, "pack", item.packSize) > 0 ? (
+                      <div className="mt-3 space-y-2">
+                        <Label>หน่วยที่เบิก</Label>
+                        <Select
+                          value={item.quantityUnit}
+                          onValueChange={(value) =>
+                            updateCartUnit(
+                              {
+                                item: {
+                                  id: item.supplyItemId,
+                                  name: item.name,
+                                  unit: item.unit,
+                                  packSize: item.packSize,
+                                  category: null,
+                                },
+                                balance: item.availableBase,
+                                threshold: 0,
+                                isLow: false,
+                              },
+                              normalizeQuantityUnit(value)
+                            )
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="base">{item.unit}</SelectItem>
+                            <SelectItem value="pack">
+                              {formatPackUnitLabel(item.unit, item.packSize)}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : null}
                     <div className="mt-3 flex items-center gap-2">
                       <Button
                         type="button"
@@ -365,9 +511,10 @@ export default function NewSupplyRequestPage() {
                                 id: item.supplyItemId,
                                 name: item.name,
                                 unit: item.unit,
+                                packSize: item.packSize,
                                 category: null,
                               },
-                              balance: item.available,
+                              balance: item.availableBase,
                               threshold: 0,
                               isLow: false,
                             },
@@ -381,7 +528,10 @@ export default function NewSupplyRequestPage() {
                         type="button"
                         variant="outline"
                         className="flex-1 rounded-2xl"
-                        disabled={item.quantity >= item.available}
+                        disabled={
+                          item.quantity >=
+                          getMaxDisplayQuantity(item.availableBase, item.quantityUnit, item.packSize)
+                        }
                         onClick={() =>
                           updateCart(
                             {
@@ -389,9 +539,10 @@ export default function NewSupplyRequestPage() {
                                 id: item.supplyItemId,
                                 name: item.name,
                                 unit: item.unit,
+                                packSize: item.packSize,
                                 category: null,
                               },
-                              balance: item.available,
+                              balance: item.availableBase,
                               threshold: 0,
                               isLow: false,
                             },

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sql } from "drizzle-orm";
 import { getDbForFactory, getFactories, type DrizzleDB } from "@/db";
 import type { SessionUser } from "@/lib/auth";
 import { requireFactoryReadContext, requireFactoryWriteContext } from "@/lib/factory-context";
@@ -30,6 +31,11 @@ export function parseOptionalString(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
+}
+
+export function normalizeSupplyItemType(value: unknown): "consumable" | "durable" {
+  if (value === "durable" || value === "tool" || value === "spare_part") return "durable";
+  return "consumable";
 }
 
 export function parseBooleanFlag(value: string | null): boolean {
@@ -83,4 +89,21 @@ export function resolveSupplyWriteContext(
 
 export function badRequest(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
+}
+
+export async function ensureSupplyItemDetailColumns(db: DrizzleDB) {
+  await db.execute(sql`
+    ALTER TABLE "supply_items"
+      ADD COLUMN IF NOT EXISTS "image_url" text,
+      ADD COLUMN IF NOT EXISTS "item_type" text,
+      ADD COLUMN IF NOT EXISTS "brand" text,
+      ADD COLUMN IF NOT EXISTS "model" text,
+      ADD COLUMN IF NOT EXISTS "serial_number" text,
+      ADD COLUMN IF NOT EXISTS "barcode" text,
+      ADD COLUMN IF NOT EXISTS "details" text,
+      ADD COLUMN IF NOT EXISTS "purchased_at" text,
+      ADD COLUMN IF NOT EXISTS "warranty_expires_at" text,
+      ADD COLUMN IF NOT EXISTS "pack_size" integer NOT NULL DEFAULT 1,
+      ADD COLUMN IF NOT EXISTS "borrow_limit" integer NOT NULL DEFAULT 0
+  `);
 }

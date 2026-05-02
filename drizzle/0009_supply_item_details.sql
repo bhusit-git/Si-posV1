@@ -1,0 +1,11 @@
+ALTER TABLE "supply_items" ADD COLUMN IF NOT EXISTS "image_url" text;
+ALTER TABLE "supply_items" ADD COLUMN IF NOT EXISTS "item_type" text;
+ALTER TABLE "supply_items" ADD COLUMN IF NOT EXISTS "brand" text;
+ALTER TABLE "supply_items" ADD COLUMN IF NOT EXISTS "model" text;
+ALTER TABLE "supply_items" ADD COLUMN IF NOT EXISTS "serial_number" text;
+ALTER TABLE "supply_items" ADD COLUMN IF NOT EXISTS "barcode" text;
+ALTER TABLE "supply_items" ADD COLUMN IF NOT EXISTS "details" text;
+ALTER TABLE "supply_items" ADD COLUMN IF NOT EXISTS "purchased_at" text;
+ALTER TABLE "supply_items" ADD COLUMN IF NOT EXISTS "warranty_expires_at" text;
+ALTER TABLE "supply_items" ADD COLUMN IF NOT EXISTS "pack_size" integer NOT NULL DEFAULT 1;
+ALTER TABLE "supply_items" ADD COLUMN IF NOT EXISTS "borrow_limit" integer NOT NULL DEFAULT 0;

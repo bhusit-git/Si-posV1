@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
 import type { DrizzleDB } from "@/db";
-import { supplyRequestItems, supplyRequests } from "@/db/schema";
+import { supplyItems, supplyRequestItems, supplyRequests } from "@/db/schema";
 import { requireManagerUp } from "@/lib/api-auth";
 import { withErrorHandler } from "@/lib/api-utils";
 import { logAudit } from "@/lib/audit";
@@ -14,11 +14,28 @@ import {
   resolveSupplyReadContext,
   resolveSupplyWriteContext,
 } from "@/lib/supply/route-helpers";
+import {
+  convertToBaseQuantity,
+  parseQuantityUnit,
+  parseWholeQuantity,
+} from "@/lib/supply/unit-conversion";
 
 const REQUEST_TYPES = new Set(["internal_factory", "cross_factory"]);
 const REQUEST_STATUSES = new Set(["draft", "pending"]);
 type SupplyRequestRow = typeof supplyRequests.$inferSelect;
 type SupplyRequestItemRow = typeof supplyRequestItems.$inferSelect;
+type SupplyItemRow = typeof supplyItems.$inferSelect;
+
+type SupplyRequestInputItem = {
+  supplyItemId: number;
+  quantity: number;
+  quantityUnit: "base" | "pack";
+  note: string | null;
+};
+
+type SupplyRequestItemWithSupplyItem = SupplyRequestItemRow & {
+  supplyItem: Pick<SupplyItemRow, "id" | "name" | "unit" | "packSize"> | null;
+};
 
 function isMissingSupplyRequestTableError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
@@ -44,18 +61,67 @@ function isMissingUsersRelationError(error: unknown): boolean {
 }
 
 function normalizeRequestItems(items: unknown) {
-  if (!Array.isArray(items) || items.length === 0) return null;
-  const normalized = items
-    .map((item) => {
-      const supplyItemId = parseInteger((item as { supplyItemId?: unknown }).supplyItemId);
-      const quantity = parseInteger((item as { quantity?: unknown }).quantity);
-      const note = parseOptionalString((item as { note?: unknown }).note);
-      if (!supplyItemId || !quantity || quantity <= 0) return null;
-      return { supplyItemId, quantity, note };
-    })
-    .filter((item): item is { supplyItemId: number; quantity: number; note: string | null } => item !== null);
+  if (!Array.isArray(items) || items.length === 0) {
+    return { items: null, error: null as string | null };
+  }
 
-  return normalized.length > 0 ? normalized : null;
+  const normalized: SupplyRequestInputItem[] = [];
+  for (const rawItem of items) {
+    const supplyItemId = parseInteger((rawItem as { supplyItemId?: unknown }).supplyItemId);
+    const quantity = parseWholeQuantity((rawItem as { quantity?: unknown }).quantity);
+    const note = parseOptionalString((rawItem as { note?: unknown }).note);
+    const quantityUnit = parseQuantityUnit((rawItem as { quantityUnit?: unknown }).quantityUnit);
+
+    if (!supplyItemId) continue;
+    if (quantity == null) {
+      return { items: null, error: "กรุณาระบุจำนวนเต็มที่ถูกต้อง" };
+    }
+    if (!quantityUnit) {
+      return { items: null, error: "หน่วยจำนวนไม่ถูกต้อง" };
+    }
+    if (quantity <= 0) continue;
+
+    normalized.push({ supplyItemId, quantity, quantityUnit, note });
+  }
+
+  return { items: normalized.length > 0 ? normalized : null, error: null as string | null };
+}
+
+async function loadSupplyItemsByIds(db: DrizzleDB, ids: number[]) {
+  if (ids.length === 0) return [];
+
+  const findMany = db.query?.supplyItems?.findMany;
+  if (findMany) {
+    return findMany({
+      where: inArray(supplyItems.id, ids),
+    });
+  }
+
+  return db.select().from(supplyItems).where(inArray(supplyItems.id, ids));
+}
+
+async function attachSupplyItemDetails(
+  db: DrizzleDB,
+  items: SupplyRequestItemRow[]
+): Promise<SupplyRequestItemWithSupplyItem[]> {
+  const supplyItemIds = Array.from(new Set(items.map((item) => item.supplyItemId)));
+  const supplyItemRows = await loadSupplyItemsByIds(db, supplyItemIds);
+  const supplyItemById = new Map(
+    supplyItemRows.map((item) => [
+      item.id,
+      {
+        id: item.id,
+        name: item.name,
+        unit: item.unit,
+        packSize: item.packSize,
+      },
+    ])
+  );
+
+  return items.map((item) => ({
+    ...item,
+    supplyItem: supplyItemById.get(item.supplyItemId) || null,
+  }));
 }
 
 function appendItems(
@@ -98,7 +164,7 @@ async function loadRequestsWithSelect(
     .where(inArray(supplyRequestItems.requestId, rows.map((row) => row.id)))
     .orderBy(asc(supplyRequestItems.id));
 
-  return appendItems(rows, items);
+  return appendItems(rows, await attachSupplyItemDetails(db, items));
 }
 
 async function loadRequests(db: DrizzleDB, factoryKey: string, status: string | null) {
@@ -134,7 +200,7 @@ async function loadRequestDetail(db: DrizzleDB, requestId: number) {
 
     return {
       ...requestRow,
-      items,
+      items: await attachSupplyItemDetails(db, items),
       createdByUser: null,
       approvedByUser: null,
     };
@@ -146,6 +212,9 @@ async function loadRequestDetail(db: DrizzleDB, requestId: number) {
       with: {
         items: {
           orderBy: [asc(supplyRequestItems.id)],
+          with: {
+            supplyItem: true,
+          },
         },
         createdByUser: true,
         approvedByUser: true,
@@ -169,7 +238,7 @@ async function loadRequestDetail(db: DrizzleDB, requestId: number) {
 
     return {
       ...requestRow,
-      items,
+      items: await attachSupplyItemDetails(db, items),
       createdByUser: null,
       approvedByUser: null,
     };
@@ -229,7 +298,8 @@ export const POST = withErrorHandler(async function POST(request: NextRequest) {
   const targetFactoryKey = parseOptionalString(body?.targetFactoryKey);
   const requesterName = parseOptionalString(body?.requesterName);
   const note = parseOptionalString(body?.note);
-  const items = normalizeRequestItems(body?.items);
+  const normalizedRequestItems = normalizeRequestItems(body?.items);
+  const items = normalizedRequestItems.items;
 
   if (!REQUEST_TYPES.has(requestType)) return badRequest("ประเภทใบเบิกไม่ถูกต้อง");
   if (!REQUEST_STATUSES.has(requestedStatus)) {
@@ -238,8 +308,36 @@ export const POST = withErrorHandler(async function POST(request: NextRequest) {
   if (requestType === "cross_factory" && !targetFactoryKey) {
     return badRequest("กรุณาเลือกโรงงานต้นทางสำหรับการเบิกข้ามโรงงาน");
   }
+  if (normalizedRequestItems.error) {
+    return badRequest(normalizedRequestItems.error);
+  }
   if (!items) return badRequest("กรุณาระบุรายการเบิกอย่างน้อย 1 รายการ");
   if (!requesterName) return badRequest("กรุณาระบุผู้ขอใช้จริง");
+
+  const supplyItemRows = await loadSupplyItemsByIds(
+    context.db,
+    Array.from(new Set(items.map((item) => item.supplyItemId)))
+  );
+  const supplyItemById = new Map(supplyItemRows.map((item) => [item.id, item]));
+  if (supplyItemById.size !== new Set(items.map((item) => item.supplyItemId)).size) {
+    return badRequest("พบรายการของใช้ที่ไม่ถูกต้อง");
+  }
+
+  const normalizedItems = items.map((item) => {
+    const supplyItem = supplyItemById.get(item.supplyItemId);
+    if (!supplyItem) {
+      throw new Error(`Supply item ${item.supplyItemId} not found`);
+    }
+
+    return {
+      ...item,
+      quantityBase: convertToBaseQuantity(
+        item.quantity,
+        item.quantityUnit,
+        supplyItem.packSize
+      ),
+    };
+  });
 
   const created = await context.db.transaction(async (tx) => {
     const [requestRow] = await tx
@@ -257,10 +355,10 @@ export const POST = withErrorHandler(async function POST(request: NextRequest) {
       .returning();
 
     await tx.insert(supplyRequestItems).values(
-      items.map((item) => ({
+      normalizedItems.map((item) => ({
         requestId: requestRow.id,
         supplyItemId: item.supplyItemId,
-        quantityRequested: item.quantity,
+        quantityRequested: item.quantityBase,
         quantityApproved: null,
         note: item.note,
       }))
@@ -283,7 +381,13 @@ export const POST = withErrorHandler(async function POST(request: NextRequest) {
         targetFactoryKey,
         requesterName,
         note,
-        itemCount: items.length,
+        itemCount: normalizedItems.length,
+        items: normalizedItems.map((item) => ({
+          supplyItemId: item.supplyItemId,
+          quantityRequested: item.quantity,
+          quantityUnit: item.quantityUnit,
+          quantityBase: item.quantityBase,
+        })),
       },
     },
     context.db

@@ -38,6 +38,9 @@ describe("POST /api/supply/requests invalid input", () => {
   const db = {
     transaction: vi.fn(),
     query: {
+      supplyItems: {
+        findMany: vi.fn(),
+      },
       supplyRequests: {
         findFirst: vi.fn(),
       },
@@ -50,6 +53,9 @@ describe("POST /api/supply/requests invalid input", () => {
       user: { id: 4, username: "manager", role: "manager", factoryKey: "si" },
     });
     mocks.resolveSupplyWriteContext.mockReturnValue({ factoryKey: "si", db });
+    db.query.supplyItems.findMany.mockResolvedValue([
+      { id: 2, name: "ถุงแพ็ค", unit: "อัน", packSize: 12 },
+    ]);
   });
 
   it("rejects cross-factory requests without a targetFactoryKey", async () => {
@@ -79,6 +85,36 @@ describe("POST /api/supply/requests invalid input", () => {
 
     expect(res.status).toBe(400);
     expect(body.error).toBe("กรุณาระบุรายการเบิกอย่างน้อย 1 รายการ");
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects requests with unknown quantity units", async () => {
+    const res = await POST(
+      makeRequest({
+        requestType: "internal_factory",
+        requesterName: "packing",
+        items: [{ supplyItemId: 2, quantity: 2, quantityUnit: "packs" }],
+      })
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe("หน่วยจำนวนไม่ถูกต้อง");
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects fractional quantities instead of truncating them", async () => {
+    const res = await POST(
+      makeRequest({
+        requestType: "internal_factory",
+        requesterName: "packing",
+        items: [{ supplyItemId: 2, quantity: 1.5, quantityUnit: "pack" }],
+      })
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe("กรุณาระบุจำนวนเต็มที่ถูกต้อง");
     expect(db.transaction).not.toHaveBeenCalled();
   });
 
@@ -115,7 +151,7 @@ describe("POST /api/supply/requests invalid input", () => {
         id: 7,
         requestId: 41,
         supplyItemId: 2,
-        quantityRequested: 4,
+        quantityRequested: 24,
         quantityApproved: null,
         note: null,
       },
@@ -151,7 +187,7 @@ describe("POST /api/supply/requests invalid input", () => {
         requestType: "internal_factory",
         requesterName: "packing",
         status: "pending",
-        items: [{ supplyItemId: 2, quantity: 4 }],
+        items: [{ supplyItemId: 2, quantity: 2, quantityUnit: "pack" }],
       })
     );
     const body = await res.json();
@@ -166,7 +202,13 @@ describe("POST /api/supply/requests invalid input", () => {
         {
           requestId: 41,
           supplyItemId: 2,
-          quantityRequested: 4,
+          quantityRequested: 24,
+          supplyItem: {
+            id: 2,
+            name: "ถุงแพ็ค",
+            unit: "อัน",
+            packSize: 12,
+          },
         },
       ],
       createdByUser: null,

@@ -83,6 +83,16 @@ describe("supply item routes", () => {
         category: "ออฟฟิศ",
         itemCode: "MAT-001",
         imageUrl: "https://cdn.example.com/pen-v1.jpg",
+        itemType: "consumable",
+        brand: "Pilot",
+        model: "G2",
+        serialNumber: null,
+        barcode: "8850001",
+        details: "ปากกาหมึกเจล",
+        purchasedAt: "2026-05-01",
+        warrantyExpiresAt: null,
+        packSize: 12,
+        borrowLimit: 3,
         linkedProductTypeId: null,
         lowStockThreshold: 10,
         isActive: true,
@@ -99,6 +109,16 @@ describe("supply item routes", () => {
         category: "ออฟฟิศ",
         itemCode: "MAT-002",
         imageUrl: "https://cdn.example.com/pen-v2.jpg",
+        itemType: "consumable",
+        brand: "Uni",
+        model: "Jetstream",
+        serialNumber: null,
+        barcode: "8850002",
+        details: "ปากกาลื่น",
+        purchasedAt: "2026-05-01",
+        warrantyExpiresAt: null,
+        packSize: 24,
+        borrowLimit: 5,
         linkedProductTypeId: 5,
         lowStockThreshold: 10,
         isActive: true,
@@ -119,12 +139,37 @@ describe("supply item routes", () => {
     execute.mockResolvedValue([]);
   });
 
-  it("falls back when image_url column is missing on catalog load", async () => {
-    db.query.supplyItems.findMany.mockRejectedValueOnce({
-      code: "42703",
-      column: "image_url",
-      message: 'column "image_url" does not exist',
-    });
+  it("self-heals missing detail columns on catalog load", async () => {
+    db.query.supplyItems.findMany
+      .mockRejectedValueOnce({
+        code: "42703",
+        column: "image_url",
+        message: 'column "image_url" does not exist',
+      })
+      .mockResolvedValueOnce([
+        {
+          id: 11,
+          name: "ปากกา",
+          unit: "ด้าม",
+          category: "ออฟฟิศ",
+          itemCode: "MAT-001",
+          imageUrl: "/uploads/supply-items/pen.png",
+          itemType: "consumable",
+          brand: "Pilot",
+          model: "G2",
+          serialNumber: null,
+          barcode: "8850001",
+          details: "ปากกาหมึกเจล",
+          purchasedAt: "2026-05-01",
+          warrantyExpiresAt: null,
+          packSize: 12,
+          borrowLimit: 3,
+          linkedProductTypeId: null,
+          lowStockThreshold: 10,
+          isActive: true,
+        },
+      ]);
+    execute.mockResolvedValueOnce([]);
     execute.mockResolvedValueOnce([
       {
         id: 11,
@@ -148,7 +193,8 @@ describe("supply item routes", () => {
       expect.objectContaining({
         id: 11,
         name: "ปากกา",
-        imageUrl: null,
+        imageUrl: "/uploads/supply-items/pen.png",
+        details: "ปากกาหมึกเจล",
       }),
     ]);
     expect(execute).toHaveBeenCalledTimes(1);
@@ -164,6 +210,14 @@ describe("supply item routes", () => {
         category: "ออฟฟิศ",
         itemCode: " MAT-001 ",
         imageUrl: " https://cdn.example.com/pen-v1.jpg ",
+        itemType: "consumable",
+        brand: " Pilot ",
+        model: " G2 ",
+        barcode: " 8850001 ",
+        details: " ปากกาหมึกเจล ",
+        purchasedAt: "2026-05-01",
+        packSize: 12,
+        borrowLimit: 3,
         lowStockThreshold: 10,
       }),
     });
@@ -176,18 +230,32 @@ describe("supply item routes", () => {
       expect.objectContaining({
         itemCode: "MAT-001",
         imageUrl: "https://cdn.example.com/pen-v1.jpg",
+        itemType: "consumable",
+        brand: "Pilot",
+        model: "G2",
+        barcode: "8850001",
+        details: "ปากกาหมึกเจล",
+        purchasedAt: "2026-05-01",
+        packSize: 12,
+        borrowLimit: 3,
         linkedProductTypeId: null,
       })
     );
     expect(body).toMatchObject({
       itemCode: "MAT-001",
       imageUrl: "https://cdn.example.com/pen-v1.jpg",
+      brand: "Pilot",
+      packSize: 12,
+      borrowLimit: 3,
     });
     expect(mocks.logAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         details: expect.objectContaining({
           itemCode: "MAT-001",
           imageUrl: "https://cdn.example.com/pen-v1.jpg",
+          brand: "Pilot",
+          packSize: 12,
+          borrowLimit: 3,
         }),
       }),
       db
@@ -202,6 +270,16 @@ describe("supply item routes", () => {
       category: "ออฟฟิศ",
       itemCode: "MAT-001",
       imageUrl: "https://cdn.example.com/pen-v1.jpg",
+      itemType: "consumable",
+      brand: "Pilot",
+      model: "G2",
+      serialNumber: null,
+      barcode: "8850001",
+      details: "ปากกาหมึกเจล",
+      purchasedAt: "2026-05-01",
+      warrantyExpiresAt: null,
+      packSize: 12,
+      borrowLimit: 3,
       linkedProductTypeId: 5,
       lowStockThreshold: 10,
       isActive: true,
@@ -213,6 +291,12 @@ describe("supply item routes", () => {
       body: JSON.stringify({
         itemCode: " MAT-002 ",
         imageUrl: " https://cdn.example.com/pen-v2.jpg ",
+        brand: " Uni ",
+        model: " Jetstream ",
+        barcode: " 8850002 ",
+        details: " ปากกาลื่น ",
+        packSize: 24,
+        borrowLimit: 5,
       }),
     });
 
@@ -224,12 +308,22 @@ describe("supply item routes", () => {
       expect.objectContaining({
         itemCode: "MAT-002",
         imageUrl: "https://cdn.example.com/pen-v2.jpg",
+        brand: "Uni",
+        model: "Jetstream",
+        barcode: "8850002",
+        details: "ปากกาลื่น",
+        packSize: 24,
+        borrowLimit: 5,
         linkedProductTypeId: 5,
       })
     );
     expect(body).toMatchObject({
       itemCode: "MAT-002",
       imageUrl: "https://cdn.example.com/pen-v2.jpg",
+      brand: "Uni",
+      model: "Jetstream",
+      packSize: 24,
+      borrowLimit: 5,
       linkedProductTypeId: 5,
     });
   });

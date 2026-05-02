@@ -1,5 +1,7 @@
 import { getDb, type DrizzleDB } from "@/db";
 import { auditLog } from "@/db/schema";
+import { extractPostgresError } from "@/lib/api-error-diagnostics";
+import { logDiagnosticEvent } from "@/lib/error-logging";
 
 export type AuditDetails = Record<string, unknown>;
 
@@ -75,6 +77,43 @@ function isAuditUserForeignKeyError(error: unknown): error is DbErrorLike {
   return (maybe.constraint_name || "").includes("audit_log_user_id");
 }
 
+function isAuditSchemaUnavailableError(error: unknown): boolean {
+  const pg = extractPostgresError(error);
+  if (pg?.code === "42P01") return true;
+  if (pg?.code === "42703" && pg.table === "audit_log") return true;
+
+  let current: unknown = error;
+  let depth = 0;
+  while (current && depth < 6) {
+    const message = current instanceof Error ? current.message : String(current ?? "");
+    if (message.includes("relation") && message.includes("audit_log") && message.includes("does not exist")) {
+      return true;
+    }
+    if (message.includes("column") && message.includes("audit_log") && message.includes("does not exist")) {
+      return true;
+    }
+
+    current =
+      typeof current === "object" && current !== null && "cause" in current
+        ? (current as { cause?: unknown }).cause
+        : null;
+    depth += 1;
+  }
+
+  return false;
+}
+
+function warnAuditSkipped(error: unknown, action: string, entity: string) {
+  logDiagnosticEvent({
+    level: "warn",
+    message: "Skipped audit log write because audit schema is unavailable",
+    error,
+    source: "audit",
+    operation: "logAudit",
+    context: { action, entity },
+  });
+}
+
 /**
  * Write an entry to the audit_log table.
  * Accepts an optional Drizzle transaction to run inside an existing DB transaction.
@@ -99,19 +138,31 @@ export async function logAudit(
       userId: params.userId,
     });
   } catch (error) {
+    if (isAuditSchemaUnavailableError(error)) {
+      warnAuditSkipped(error, params.action, params.entity);
+      return;
+    }
     if (!isAuditUserForeignKeyError(error) || params.userId == null) {
       throw error;
     }
-    await target.insert(auditLog).values({
-      ...baseValues,
-      userId: null,
-      details: {
-        ...(params.details || {}),
-        auditUserFallback: {
-          originalUserId: params.userId,
-          reason: "audit_log_user_fk_missing",
+    try {
+      await target.insert(auditLog).values({
+        ...baseValues,
+        userId: null,
+        details: {
+          ...(params.details || {}),
+          auditUserFallback: {
+            originalUserId: params.userId,
+            reason: "audit_log_user_fk_missing",
+          },
         },
-      },
-    });
+      });
+    } catch (fallbackError) {
+      if (isAuditSchemaUnavailableError(fallbackError)) {
+        warnAuditSkipped(fallbackError, params.action, params.entity);
+        return;
+      }
+      throw fallbackError;
+    }
   }
 }
