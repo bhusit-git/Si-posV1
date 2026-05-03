@@ -22,7 +22,7 @@ vi.mock("@/lib/supply/route-helpers", () => ({
   }),
 }));
 
-import { supplyRequestItems, supplyRequests } from "@/db/schema";
+import { supplyItems, supplyRequestItems, supplyRequests } from "@/db/schema";
 import {
   approveRequest,
   fulfillRequest,
@@ -71,8 +71,18 @@ function buildRequestItem(
 
 function createRequestDb(
   request: ReturnType<typeof buildRequest>,
-  items: Array<ReturnType<typeof buildRequestItem>> = []
+  items: Array<ReturnType<typeof buildRequestItem>> = [],
+  supplyItemOverrides: Record<number, Partial<{ name: string; unit: string; borrowLimit: number }>> = {}
 ) {
+  const uniqueSupplyItemIds = Array.from(new Set(items.map((item) => item.supplyItemId)));
+  const supplyItemRows = uniqueSupplyItemIds.map((id) => ({
+    id,
+    name: `item-${id}`,
+    unit: "ชิ้น",
+    borrowLimit: 0,
+    ...supplyItemOverrides[id],
+  }));
+
   const tx = {
     select: vi.fn(() => ({
       from: vi.fn((table) => {
@@ -89,6 +99,12 @@ function createRequestDb(
             where: vi.fn(() => ({
               orderBy: vi.fn().mockResolvedValue(items),
             })),
+          };
+        }
+
+        if (table === supplyItems) {
+          return {
+            where: vi.fn().mockResolvedValue(supplyItemRows),
           };
         }
 
@@ -329,6 +345,36 @@ describe("request-engine", () => {
     expect(checkStockSufficiency).toHaveBeenCalledWith(sourceStockDb, "bearing", [
       { supplyItemId: 3, quantity: 5 },
     ]);
+  });
+
+  it("submitRequest rejects when requested quantity exceeds borrow limit", async () => {
+    const request = buildRequest({ status: "draft" });
+    const items = [buildRequestItem({ id: 1001, supplyItemId: 3, quantityRequested: 6 })];
+    const db = createRequestDb(request, items, {
+      3: { name: "ปากกา", unit: "ด้าม", borrowLimit: 5 },
+    });
+
+    await expect(submitRequest(db as never, request.id, { id: 7 })).rejects.toThrow(
+      "ปากกา ขอเกินวงเงินเบิก: ขอ 6 ด้าม แต่จำกัดไม่เกิน 5 ด้าม"
+    );
+  });
+
+  it("approveRequest rejects when approved quantity exceeds borrow limit", async () => {
+    const request = buildRequest({ status: "pending" });
+    const items = [buildRequestItem({ id: 1001, supplyItemId: 3, quantityRequested: 8 })];
+    const db = createRequestDb(request, items, {
+      3: { name: "ปากกา", unit: "ด้าม", borrowLimit: 5 },
+    });
+
+    await expect(
+      approveRequest(
+        db as never,
+        request.id,
+        { id: 9 },
+        [{ requestItemId: 1001, quantity: 6 }],
+        "manager-pin"
+      )
+    ).rejects.toThrow("ปากกา ขอเกินวงเงินเบิก: ขอ 6 ด้าม แต่จำกัดไม่เกิน 5 ด้าม");
   });
 
   it("rejectRequest transitions pending to rejected and appends note", async () => {

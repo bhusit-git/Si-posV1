@@ -1,6 +1,6 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 
-import { supplyRequestItems, supplyRequests } from "@/db/schema";
+import { supplyItems, supplyRequestItems, supplyRequests } from "@/db/schema";
 import type { SessionUser } from "@/lib/auth";
 import { validateSupplyRequestTargetFactoryKey } from "@/lib/supply/route-helpers";
 import {
@@ -47,6 +47,16 @@ function mergeNote(existingNote: string | null, nextNote: string): string {
   return `${existing}\n${incoming}`;
 }
 
+export class SupplyRequestValidationError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status = 400) {
+    super(message);
+    this.name = "SupplyRequestValidationError";
+    this.status = status;
+  }
+}
+
 async function loadRequest(
   db: Pick<DrizzleDb, "select">,
   requestId: number
@@ -74,6 +84,30 @@ async function loadRequestItems(
     .from(supplyRequestItems)
     .where(eq(supplyRequestItems.requestId, requestId))
     .orderBy(asc(supplyRequestItems.id));
+}
+
+type SupplyItemConstraintRow = Pick<
+  typeof supplyItems.$inferSelect,
+  "id" | "name" | "unit" | "borrowLimit"
+>;
+
+async function loadSupplyItemConstraints(
+  db: Pick<DrizzleDb, "select">,
+  supplyItemIds: number[]
+): Promise<Map<number, SupplyItemConstraintRow>> {
+  if (supplyItemIds.length === 0) return new Map();
+
+  const rows = await db
+    .select({
+      id: supplyItems.id,
+      name: supplyItems.name,
+      unit: supplyItems.unit,
+      borrowLimit: supplyItems.borrowLimit,
+    })
+    .from(supplyItems)
+    .where(inArray(supplyItems.id, supplyItemIds));
+
+  return new Map(rows.map((row) => [row.id, row]));
 }
 
 function requireStatus(
@@ -114,6 +148,32 @@ function validateDraftForSubmit(
   }
 }
 
+function formatBorrowLimitError(item: {
+  supplyItemId: number;
+  quantity: number;
+  supplyItem?: SupplyItemConstraintRow | null;
+}): string {
+  const label = item.supplyItem?.name || `รายการ #${item.supplyItemId}`;
+  const unit = item.supplyItem?.unit || "หน่วย";
+  const limit = item.supplyItem?.borrowLimit || 0;
+  return `${label} ขอเกินวงเงินเบิก: ขอ ${item.quantity} ${unit} แต่จำกัดไม่เกิน ${limit} ${unit}`;
+}
+
+function assertBorrowLimit(
+  itemRows: { supplyItemId: number; quantity: number }[],
+  constraintsById: Map<number, SupplyItemConstraintRow>
+) {
+  for (const item of itemRows) {
+    const supplyItem = constraintsById.get(item.supplyItemId);
+    const borrowLimit = supplyItem?.borrowLimit ?? 0;
+    if (borrowLimit > 0 && item.quantity > borrowLimit) {
+      throw new SupplyRequestValidationError(
+        formatBorrowLimitError({ ...item, supplyItem })
+      );
+    }
+  }
+}
+
 function buildApprovedQuantityMap(
   requestItems: SupplyRequestItemRow[],
   approvedQtys: { requestItemId: number; quantity: number }[]
@@ -150,6 +210,15 @@ export async function submitRequest(
     requireStatus(request, "draft");
     const requestItems = await loadRequestItems(tx, requestId);
     validateDraftForSubmit(request, requestItems);
+    const supplyItemIds = Array.from(new Set(requestItems.map((item) => item.supplyItemId)));
+    const constraintsById = await loadSupplyItemConstraints(tx, supplyItemIds);
+    assertBorrowLimit(
+      requestItems.map((item) => ({
+        supplyItemId: item.supplyItemId,
+        quantity: item.quantityRequested,
+      })),
+      constraintsById
+    );
 
     const [updated] = await tx
       .update(supplyRequests)
@@ -234,6 +303,15 @@ export async function approveRequest(
     }
 
     const itemApprovals = buildApprovedQuantityMap(requestItems, approvedQtys);
+    const supplyItemIds = Array.from(new Set(itemApprovals.map((item) => item.supplyItemId)));
+    const constraintsById = await loadSupplyItemConstraints(tx, supplyItemIds);
+    assertBorrowLimit(
+      itemApprovals.map((item) => ({
+        supplyItemId: item.supplyItemId,
+        quantity: item.quantityApproved,
+      })),
+      constraintsById
+    );
     const stockFactoryKey = resolveStockFactoryKey(request);
     if (!stockFactoryKey) {
       throw new Error("Cross-factory request is missing target factory");

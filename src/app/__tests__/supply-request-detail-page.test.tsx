@@ -29,6 +29,9 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: pushMock,
   }),
+  useSearchParams: () => ({
+    get: () => null,
+  }),
 }));
 
 vi.mock("sonner", () => ({
@@ -91,10 +94,10 @@ describe("SupplyRequestDetailPage", () => {
     render(<SupplyRequestDetailPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("รายละเอียดใบเบิก")).toBeInTheDocument();
+      expect(screen.getByText(/รายการพัสดุที่ขอเบิก/)).toBeInTheDocument();
     });
 
-    const sourceFactoryLabel = screen.getByText("โรงงานต้นทาง");
+    const sourceFactoryLabel = screen.getByText("คลังต้นทาง (จ่าย)");
     const sourceFactoryCard = sourceFactoryLabel.parentElement;
 
     expect(sourceFactoryCard).not.toBeNull();

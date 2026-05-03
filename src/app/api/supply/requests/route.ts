@@ -34,6 +34,15 @@ type SupplyRequestInputItem = {
   note: string | null;
 };
 
+function buildBorrowLimitError(params: {
+  itemName: string;
+  unit: string;
+  requested: number;
+  limit: number;
+}) {
+  return `${params.itemName} ขอเกินวงเงินเบิก: ขอ ${params.requested} ${params.unit} แต่จำกัดไม่เกิน ${params.limit} ${params.unit}`;
+}
+
 type SupplyRequestItemWithSupplyItem = SupplyRequestItemRow & {
   supplyItem: Pick<SupplyItemRow, "id" | "name" | "unit" | "packSize"> | null;
 };
@@ -425,6 +434,25 @@ export const POST = withErrorHandler(async function POST(request: NextRequest) {
       ),
     };
   });
+
+  if (!isDraft) {
+    const supplyItemById = new Map(supplyItemRows.map((item) => [item.id, item]));
+    for (const item of normalizedItems) {
+      const supplyItem = supplyItemById.get(item.supplyItemId);
+      if (!supplyItem) continue;
+      const borrowLimit = supplyItem.borrowLimit ?? 0;
+      if (borrowLimit > 0 && item.quantityBase > borrowLimit) {
+        return badRequest(
+          buildBorrowLimitError({
+            itemName: supplyItem.name,
+            unit: supplyItem.unit,
+            requested: item.quantityBase,
+            limit: borrowLimit,
+          })
+        );
+      }
+    }
+  }
 
   const created = await context.db.transaction(async (tx) => {
     const [requestRow] = await tx

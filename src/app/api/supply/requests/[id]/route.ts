@@ -32,7 +32,7 @@ import {
 type SupplyRequestItemRow = typeof supplyRequestItems.$inferSelect;
 type SupplyItemRow = typeof supplyItems.$inferSelect;
 type SupplyRequestItemWithSupplyItem = SupplyRequestItemRow & {
-  supplyItem: Pick<SupplyItemRow, "id" | "name" | "unit" | "packSize"> | null;
+  supplyItem: Pick<SupplyItemRow, "id" | "name" | "unit" | "packSize" | "imageUrl"> | null;
 };
 
 type FallbackUser = {
@@ -52,6 +52,21 @@ type SupplyRequestInputItem = {
   quantityUnit: "base" | "pack";
   note: string | null;
 };
+
+function asValidationError(error: unknown): { message: string; status: number } | null {
+  if (!error || typeof error !== "object") return null;
+  const rec = error as { name?: unknown; message?: unknown; status?: unknown };
+  if (rec.name !== "SupplyRequestValidationError") return null;
+
+  const message = typeof rec.message === "string" && rec.message.trim()
+    ? rec.message
+    : "ข้อมูลใบเบิกไม่ถูกต้อง";
+  const status = typeof rec.status === "number" && Number.isInteger(rec.status)
+    ? rec.status
+    : 400;
+
+  return { message, status };
+}
 
 function normalizeApprovedQtys(input: unknown) {
   if (!Array.isArray(input)) return [];
@@ -162,6 +177,7 @@ async function attachSupplyItemDetails(
         name: item.name,
         unit: item.unit,
         packSize: item.packSize,
+        imageUrl: item.imageUrl,
       },
     ])
   );
@@ -355,36 +371,44 @@ export const POST = withErrorHandler(async function POST(
   }
 
   let result;
-  if (action === "submit") {
-    result = await submitRequest(requestContext.db, requestId, auth.user);
-  } else if (action === "approve") {
-    const signature = parseOptionalString(body?.signature) || "";
-    if (!signature) return badRequest("กรุณาระบุลายเซ็นผู้อนุมัติ");
-    result = await approveRequest(
-      requestContext.db,
-      requestId,
-      auth.user,
-      normalizeApprovedQtys(body?.approvedQtys),
-      signature,
-      {
-        stockDb: existing.requestType === "cross_factory" && existing.targetFactoryKey
-          ? getDbForFactory(existing.targetFactoryKey)
-          : undefined,
-      }
-    );
-  } else if (action === "reject") {
-    result = await rejectRequest(
-      requestContext.db,
-      requestId,
-      auth.user,
-      parseOptionalString(body?.note) || ""
-    );
-  } else if (action === "fulfil") {
-    result = await fulfillRequest(requestContext.db, requestId, auth.user);
-  } else if (action === "cancel") {
-    result = await cancelRequest(requestContext.db, requestId, auth.user);
-  } else {
-    return badRequest("action ไม่ถูกต้อง");
+  try {
+    if (action === "submit") {
+      result = await submitRequest(requestContext.db, requestId, auth.user);
+    } else if (action === "approve") {
+      const signature = parseOptionalString(body?.signature) || "";
+      if (!signature) return badRequest("กรุณาระบุลายเซ็นผู้อนุมัติ");
+      result = await approveRequest(
+        requestContext.db,
+        requestId,
+        auth.user,
+        normalizeApprovedQtys(body?.approvedQtys),
+        signature,
+        {
+          stockDb: existing.requestType === "cross_factory" && existing.targetFactoryKey
+            ? getDbForFactory(existing.targetFactoryKey)
+            : undefined,
+        }
+      );
+    } else if (action === "reject") {
+      result = await rejectRequest(
+        requestContext.db,
+        requestId,
+        auth.user,
+        parseOptionalString(body?.note) || ""
+      );
+    } else if (action === "fulfil") {
+      result = await fulfillRequest(requestContext.db, requestId, auth.user);
+    } else if (action === "cancel") {
+      result = await cancelRequest(requestContext.db, requestId, auth.user);
+    } else {
+      return badRequest("action ไม่ถูกต้อง");
+    }
+  } catch (error) {
+    const validationError = asValidationError(error);
+    if (validationError) {
+      return badRequest(validationError.message, validationError.status);
+    }
+    throw error;
   }
 
   await logAudit(

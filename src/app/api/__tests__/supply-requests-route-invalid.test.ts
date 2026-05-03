@@ -187,6 +187,26 @@ describe("POST /api/supply/requests invalid input", () => {
     expect(db.transaction).not.toHaveBeenCalled();
   });
 
+  it("rejects pending requests when quantity exceeds borrow limit", async () => {
+    db.query.supplyItems.findMany.mockResolvedValueOnce([
+      { id: 2, name: "ถุงแพ็ค", unit: "อัน", packSize: 12, borrowLimit: 10 },
+    ]);
+
+    const res = await POST(
+      makeRequest({
+        status: "pending",
+        requestType: "internal_factory",
+        requesterName: "packing",
+        items: [{ supplyItemId: 2, quantity: 1, quantityUnit: "pack" }],
+      })
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe("ถุงแพ็ค ขอเกินวงเงินเบิก: ขอ 12 อัน แต่จำกัดไม่เกิน 10 อัน");
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
   it("allows saving a sparse draft without requesterName or items", async () => {
     const insertedRequest = {
       id: 41,

@@ -31,6 +31,7 @@ interface StockBalanceRow {
     name: string;
     unit: string;
     packSize: number;
+    borrowLimit?: number;
     category: string | null;
     imageUrl?: string | null;
   };
@@ -508,8 +509,14 @@ export default function NewSupplyRequestPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
-                      threshold {formatBaseQuantityWithPack(row.threshold, row.item.unit, row.item.packSize)}
-                      {outOfStock ? " · ของหมด" : row.isLow ? " · ใกล้หมด" : " · พร้อมเบิก"}
+                      เบิกได้ต่อครั้ง{" "}
+                      {row.item.borrowLimit && row.item.borrowLimit > 0
+                        ? formatBaseQuantityWithPack(
+                            row.item.borrowLimit,
+                            row.item.unit,
+                            row.item.packSize
+                          )
+                        : "ไม่จำกัด"}
                     </div>
                     {hasPackUnit(row.item.packSize) && getRowMaxQuantity(row, "pack") > 0 ? (
                       <div className="space-y-2">
