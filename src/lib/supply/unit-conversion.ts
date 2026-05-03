@@ -57,6 +57,17 @@ export function convertToBaseQuantity(
   return safeQuantity;
 }
 
+export function calculateProjectedBaseBalance(
+  currentBaseQuantity: unknown,
+  enteredQuantity: unknown,
+  quantityUnit: SupplyQuantityUnit,
+  packSize: unknown
+): number {
+  const safeCurrentBaseQuantity = Math.max(0, toSafeInteger(currentBaseQuantity));
+  const addedBaseQuantity = Math.max(0, convertToBaseQuantity(enteredQuantity, quantityUnit, packSize));
+  return safeCurrentBaseQuantity + addedBaseQuantity;
+}
+
 export function getMaxDisplayQuantity(
   availableBaseQuantity: unknown,
   quantityUnit: SupplyQuantityUnit,

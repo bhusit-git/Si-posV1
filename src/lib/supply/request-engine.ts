@@ -2,6 +2,7 @@ import { asc, eq } from "drizzle-orm";
 
 import { supplyRequestItems, supplyRequests } from "@/db/schema";
 import type { SessionUser } from "@/lib/auth";
+import { validateSupplyRequestTargetFactoryKey } from "@/lib/supply/route-helpers";
 import {
   checkStockSufficiency,
   writeStockLedger,
@@ -11,7 +12,22 @@ import type { DrizzleDb } from "@/shared/db/runtime";
 export type SupplyRequestRow = typeof supplyRequests.$inferSelect;
 export type SupplyRequestItemRow = typeof supplyRequestItems.$inferSelect;
 
-type RequestDb = Pick<DrizzleDb, "select" | "update" | "transaction">;
+type RequestDb = Pick<DrizzleDb, "delete" | "insert" | "select" | "update" | "transaction">;
+type StockCheckDb = Pick<DrizzleDb, "select">;
+
+type DraftRequestItemInput = {
+  supplyItemId: number;
+  quantityRequested: number;
+  note: string | null;
+};
+
+type UpdateDraftRequestInput = {
+  requestType: SupplyRequestRow["requestType"];
+  targetFactoryKey: string | null;
+  requesterName: string | null;
+  note: string | null;
+  items: DraftRequestItemInput[];
+};
 
 function resolveStockFactoryKey(request: SupplyRequestRow): string {
   return request.requestType === "cross_factory"
@@ -72,6 +88,32 @@ function requireStatus(
   }
 }
 
+function hasNonEmptyValue(value: string | null | undefined): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function validateDraftForSubmit(
+  request: SupplyRequestRow,
+  requestItems: SupplyRequestItemRow[]
+) {
+  if (!hasNonEmptyValue(request.requesterName)) {
+    throw new Error("กรุณาระบุผู้ขอใช้จริงก่อนส่งอนุมัติ");
+  }
+
+  const targetFactoryValidation = validateSupplyRequestTargetFactoryKey(
+    request.requestType,
+    request.targetFactoryKey,
+    { allowEmpty: false }
+  );
+  if (targetFactoryValidation.error) {
+    throw new Error(targetFactoryValidation.error);
+  }
+
+  if (requestItems.length === 0) {
+    throw new Error("กรุณาเพิ่มรายการเบิกอย่างน้อย 1 รายการก่อนส่งอนุมัติ");
+  }
+}
+
 function buildApprovedQuantityMap(
   requestItems: SupplyRequestItemRow[],
   approvedQtys: { requestItemId: number; quantity: number }[]
@@ -106,6 +148,8 @@ export async function submitRequest(
   return db.transaction(async (tx) => {
     const request = await loadRequest(tx, requestId);
     requireStatus(request, "draft");
+    const requestItems = await loadRequestItems(tx, requestId);
+    validateDraftForSubmit(request, requestItems);
 
     const [updated] = await tx
       .update(supplyRequests)
@@ -120,12 +164,60 @@ export async function submitRequest(
   });
 }
 
+export async function updateDraftRequest(
+  db: RequestDb,
+  requestId: number,
+  input: UpdateDraftRequestInput
+): Promise<SupplyRequestRow> {
+  return db.transaction(async (tx) => {
+    const request = await loadRequest(tx, requestId);
+    requireStatus(request, "draft");
+    const targetFactoryValidation = validateSupplyRequestTargetFactoryKey(
+      input.requestType,
+      input.targetFactoryKey,
+      { allowEmpty: true }
+    );
+    if (targetFactoryValidation.error) {
+      throw new Error(targetFactoryValidation.error);
+    }
+
+    await tx.delete(supplyRequestItems).where(eq(supplyRequestItems.requestId, requestId));
+
+    if (input.items.length > 0) {
+      await tx.insert(supplyRequestItems).values(
+        input.items.map((item) => ({
+          requestId,
+          supplyItemId: item.supplyItemId,
+          quantityRequested: item.quantityRequested,
+          quantityApproved: null,
+          note: item.note,
+        }))
+      );
+    }
+
+    const [updated] = await tx
+      .update(supplyRequests)
+      .set({
+        requestType: input.requestType,
+        targetFactoryKey: targetFactoryValidation.targetFactoryKey,
+        requesterName: input.requesterName,
+        note: input.note,
+        updatedAt: new Date(),
+      })
+      .where(eq(supplyRequests.id, requestId))
+      .returning();
+
+    return updated;
+  });
+}
+
 export async function approveRequest(
   db: RequestDb,
   requestId: number,
   approver: Pick<SessionUser, "id">,
   approvedQtys: { requestItemId: number; quantity: number }[],
-  signature: string
+  signature: string,
+  options: { stockDb?: StockCheckDb } = {}
 ): Promise<SupplyRequestRow> {
   const approverSignature = trimSignature(signature);
   if (!approverSignature) {
@@ -148,7 +240,7 @@ export async function approveRequest(
     }
 
     const stockCheck = await checkStockSufficiency(
-      tx,
+      options.stockDb || tx,
       stockFactoryKey,
       itemApprovals
         .filter((item) => item.quantityApproved > 0)

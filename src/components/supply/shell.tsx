@@ -19,18 +19,82 @@ interface FactoryInfo {
   name: string;
 }
 
-const items = [
-  { href: "/supply", label: "Overview", icon: Factory },
-  { href: "/supply/stock", label: "Stock", icon: Boxes },
-  { href: "/supply/requests", label: "ใบเบิก", icon: ClipboardList },
-  { href: "/supply/transfers", label: "โอนย้าย", icon: Truck },
-  { href: "/supply/items", label: "Catalog", icon: Package2 },
-  { href: "/supply/settings", label: "Settings", icon: Settings2 },
-] as const;
-
 type UILang = "th" | "en";
 
 const LANG_STORAGE_KEY = "superice_ui_lang";
+
+const navLabels: Record<
+  UILang,
+  Record<"/supply" | "/supply/stock" | "/supply/requests" | "/supply/transfers" | "/supply/items" | "/supply/settings", string>
+> = {
+  th: {
+    "/supply": "ภาพรวม",
+    "/supply/stock": "สต็อก",
+    "/supply/requests": "ใบเบิก",
+    "/supply/transfers": "โอนย้าย",
+    "/supply/items": "คลังรายการ",
+    "/supply/settings": "ตั้งค่า",
+  },
+  en: {
+    "/supply": "Overview",
+    "/supply/stock": "Stock",
+    "/supply/requests": "Requests",
+    "/supply/transfers": "Transfers",
+    "/supply/items": "Catalog",
+    "/supply/settings": "Settings",
+  },
+};
+
+const items = [
+  { href: "/supply", icon: Factory },
+  { href: "/supply/stock", icon: Boxes },
+  { href: "/supply/requests", icon: ClipboardList },
+  { href: "/supply/transfers", icon: Truck },
+  { href: "/supply/items", icon: Package2 },
+  { href: "/supply/settings", icon: Settings2 },
+] as const;
+
+const sidebarCopy: Record<
+  UILang,
+  {
+    moduleName: string;
+    title: string;
+    factoryPrefix: string;
+    fallbackDescription: string;
+    importantRuleTitle: string;
+    importantRuleBody: string;
+    backToModules: string;
+    pendingSyncConfirm: (count: number) => string;
+    loading: string;
+  }
+> = {
+  th: {
+    moduleName: "ระบบคลังพัสดุ",
+    title: "คลังพัสดุ",
+    factoryPrefix: "โรงงาน",
+    fallbackDescription: "ภาพรวมสต็อกและการเบิกของใช้",
+    importantRuleTitle: "กติกาสำคัญ",
+    importantRuleBody: "อนุมัติแล้วยังไม่ตัดสต็อก ระบบจะตัดตอนจ่ายของจริงหรือส่งโอนย้ายจริงเท่านั้น",
+    backToModules: "กลับหน้าหลัก",
+    pendingSyncConfirm:
+      (count) =>
+        `ยังมีรายการขายรอซิงก์ ${count} รายการในเครื่องนี้\n\nออกจากระบบได้ แต่ต้องกลับมาเข้าสู่ระบบออนไลน์ภายหลังเพื่อซิงก์รายการเหล่านี้`,
+    loading: "กำลังโหลดคลังพัสดุ...",
+  },
+  en: {
+    moduleName: "SUPPLY MODULE",
+    title: "Supply",
+    factoryPrefix: "Factory",
+    fallbackDescription: "Stock overview and supply requests",
+    importantRuleTitle: "Important rule",
+    importantRuleBody: "Approval does not deduct stock. Stock updates only when items are actually fulfilled or transferred.",
+    backToModules: "Back to modules",
+    pendingSyncConfirm:
+      (count) =>
+        `There are ${count} sales queued to sync on this device.\n\nYou can log out now, but you will need to sign in online later to sync them.`,
+    loading: "Loading supply workspace...",
+  },
+};
 
 const roleLabels: Record<UILang, Record<string, string>> = {
   th: {
@@ -96,6 +160,8 @@ export function SupplyShell({ children }: { children: React.ReactNode }) {
     };
   }, [uiScale]);
 
+  const copy = sidebarCopy[lang];
+
   const visibleItems = useMemo(() => {
     if (!user) return [];
     return items.filter((item) => user.role === "admin" || (item.href !== "/supply/items" && item.href !== "/supply/settings"));
@@ -127,9 +193,7 @@ export function SupplyShell({ children }: { children: React.ReactNode }) {
     const queuedCount = await getPendingCount();
     if (
       queuedCount > 0 &&
-      !window.confirm(
-        `ยังมีรายการขายรอซิงก์ ${queuedCount} รายการในเครื่องนี้\n\nออกจากระบบได้ แต่ต้องกลับมาเข้าสู่ระบบออนไลน์ภายหลังเพื่อซิงก์รายการเหล่านี้`
-      )
+      !window.confirm(copy.pendingSyncConfirm(queuedCount))
     ) {
       return;
     }
@@ -143,7 +207,7 @@ export function SupplyShell({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen bg-gray-50 px-6 py-16 dark:bg-gray-950">
         <div className="mx-auto max-w-6xl rounded-2xl border border-gray-200 bg-white p-10 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-          <p className="text-sm text-gray-500 ui-scale-body dark:text-gray-400">กำลังโหลดคลังพัสดุ...</p>
+          <p className="text-sm text-gray-500 ui-scale-body dark:text-gray-400">{copy.loading}</p>
         </div>
       </div>
     );
@@ -158,10 +222,10 @@ export function SupplyShell({ children }: { children: React.ReactNode }) {
         >
           <div className="p-4 border-b border-gray-200 dark:border-gray-700">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.24em] text-amber-600">Supply Module</p>
-              <h1 className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">คลังพัสดุ</h1>
+              <p className="text-xs font-medium uppercase tracking-[0.24em] text-amber-600">{copy.moduleName}</p>
+              <h1 className="mt-2 text-lg font-bold text-slate-900 dark:text-slate-100">{copy.title}</h1>
               <p className="mt-1 text-xs text-gray-500 ui-scale-page-subtitle dark:text-gray-400">
-                {factory ? `โรงงาน ${factory.name}` : "ภาพรวมสต็อกและการเบิกของใช้"}
+                {factory ? `${copy.factoryPrefix} ${factory.name}` : copy.fallbackDescription}
               </p>
             </div>
           </div>
@@ -188,16 +252,16 @@ export function SupplyShell({ children }: { children: React.ReactNode }) {
                     )}
                   >
                     <Icon className="size-[18px]" />
-                    {item.label}
+                    {navLabels[lang][item.href]}
                   </Link>
                 );
               })}
             </nav>
 
             <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
-              <p className="font-medium ui-scale-label">กติกาสำคัญ</p>
+              <p className="font-medium ui-scale-label">{copy.importantRuleTitle}</p>
               <p className="mt-2 text-amber-800 ui-scale-body dark:text-amber-100/90">
-                approve ยังไม่ตัด stock, ระบบจะตัดตอน fulfil หรือส่ง transfer จริงเท่านั้น
+                {copy.importantRuleBody}
               </p>
             </div>
           </div>
@@ -206,7 +270,7 @@ export function SupplyShell({ children }: { children: React.ReactNode }) {
             <Button asChild variant="outline" size="sm" className="w-full rounded-full">
               <Link href="/modules">
                 <ArrowLeft className="size-4" />
-                <span>กลับหน้าหลัก</span>
+                <span>{copy.backToModules}</span>
               </Link>
             </Button>
 

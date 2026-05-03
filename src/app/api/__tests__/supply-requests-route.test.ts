@@ -4,10 +4,17 @@ import { NextRequest, NextResponse } from "next/server";
 const mocks = vi.hoisted(() => ({
   requireManagerUp: vi.fn(),
   resolveSupplyReadContext: vi.fn(),
+  getDbForFactory: vi.fn(),
+  getFactories: vi.fn(() => [{ key: "si", name: "SI" }]),
 }));
 
 vi.mock("@/lib/api-auth", () => ({
   requireManagerUp: mocks.requireManagerUp,
+}));
+
+vi.mock("@/db", () => ({
+  getDbForFactory: mocks.getDbForFactory,
+  getFactories: mocks.getFactories,
 }));
 
 vi.mock("@/lib/supply/route-helpers", async () => {
@@ -94,6 +101,97 @@ describe("GET /api/supply/requests", () => {
 
     expect(res.status).toBe(200);
     expect(body).toEqual([]);
+  });
+
+  it("includes incoming cross-factory requests targeted to the current factory", async () => {
+    const createdAt = "2026-05-01T02:00:00.000Z";
+    const externalFindMany = vi.fn().mockResolvedValue([
+      {
+        id: 52,
+        factoryKey: "bearing",
+        requestType: "cross_factory",
+        targetFactoryKey: "si",
+        requesterName: "packing",
+        status: "pending",
+        note: null,
+        createdAt,
+        updatedAt: createdAt,
+        items: [{ id: 7, requestId: 52, supplyItemId: 2, quantityRequested: 12 }],
+      },
+    ]);
+    const externalSelect = vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          orderBy: vi.fn().mockResolvedValue([{ id: 52, createdAt }]),
+        })),
+      })),
+    }));
+    const externalDb = {
+      select: externalSelect,
+      query: {
+        supplyRequests: {
+          findMany: externalFindMany,
+        },
+      },
+    };
+
+    mocks.getFactories.mockReturnValueOnce([
+      { key: "si", name: "SI" },
+      { key: "bearing", name: "Bearing" },
+    ]);
+    mocks.getDbForFactory.mockImplementation((factoryKey: string) =>
+      factoryKey === "bearing" ? externalDb : db
+    );
+    findMany.mockResolvedValueOnce([]);
+    selectOrderBy.mockResolvedValueOnce([]);
+
+    const res = await GET(new NextRequest("http://localhost/api/supply/requests?status=pending"));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toEqual([
+      expect.objectContaining({
+        id: 52,
+        factoryKey: "bearing",
+        requestType: "cross_factory",
+        targetFactoryKey: "si",
+        requestRef: "REQ-20260501-001",
+      }),
+    ]);
+    expect(externalFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        with: { items: true },
+      })
+    );
+  });
+
+  it("does not expose requester drafts to the source factory", async () => {
+    const externalFindMany = vi.fn();
+    const externalDb = {
+      select: vi.fn(),
+      query: {
+        supplyRequests: {
+          findMany: externalFindMany,
+        },
+      },
+    };
+
+    mocks.getFactories.mockReturnValueOnce([
+      { key: "si", name: "SI" },
+      { key: "bearing", name: "Bearing" },
+    ]);
+    mocks.getDbForFactory.mockImplementation((factoryKey: string) =>
+      factoryKey === "bearing" ? externalDb : db
+    );
+    findMany.mockResolvedValueOnce([]);
+    selectOrderBy.mockResolvedValueOnce([]);
+
+    const res = await GET(new NextRequest("http://localhost/api/supply/requests?status=draft"));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toEqual([]);
+    expect(externalFindMany).not.toHaveBeenCalled();
   });
 
   it("returns auth error when manager access is denied", async () => {

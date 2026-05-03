@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  calculateProjectedBaseBalance,
   convertDisplayQuantity,
   convertToBaseQuantity,
   formatBaseQuantityWithPack,
@@ -41,6 +42,11 @@ describe("supply unit conversion", () => {
   it("converts pack quantities into base units", () => {
     expect(convertToBaseQuantity(3, "pack", 12)).toBe(36);
     expect(convertToBaseQuantity(5, "base", 12)).toBe(5);
+  });
+
+  it("projects stock balances using the selected input unit", () => {
+    expect(calculateProjectedBaseBalance(23, 3, "pack", 10)).toBe(53);
+    expect(calculateProjectedBaseBalance(23, 3, "base", 10)).toBe(26);
   });
 
   it("computes max quantity per selected display unit", () => {

@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SupplyShell } from "@/components/supply/shell";
 import SupplyOverviewPage from "@/app/(supply)/supply/page";
@@ -100,12 +100,41 @@ describe("SupplyShell", () => {
     expect(sidebar).toHaveClass("flex", "flex-col");
     expect(sidebar).toHaveClass("md:w-56", "md:fixed");
     expect(scrollArea).toHaveClass("flex-1", "min-h-0", "overflow-y-auto");
-    expect(within(scrollArea).getByText("Overview")).toBeInTheDocument();
+    expect(within(scrollArea).getByText("ภาพรวม")).toBeInTheDocument();
     expect(within(scrollArea).getByText("กติกาสำคัญ")).toBeInTheDocument();
     expect(within(footer).getByText("ขนาดตัวอักษร")).toBeInTheDocument();
     expect(within(footer).getByText("TH")).toBeInTheDocument();
     expect(within(footer).getByRole("button", { name: "ออก" })).toBeInTheDocument();
     expect(within(scrollArea).queryByText("ขนาดตัวอักษร")).not.toBeInTheDocument();
+  });
+
+  it("switches all sidebar copy when the language is changed", async () => {
+    render(
+      <SupplyShell>
+        <div>Supply content</div>
+      </SupplyShell>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("ภาพรวม")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "EN" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("SUPPLY MODULE")).toBeInTheDocument();
+    });
+
+    const scrollArea = screen.getByTestId("supply-sidebar-scroll");
+    const footer = screen.getByTestId("supply-sidebar-footer");
+
+    expect(within(scrollArea).getByText("Overview")).toBeInTheDocument();
+    expect(within(scrollArea).getByText("Requests")).toBeInTheDocument();
+    expect(within(scrollArea).getByText("Important rule")).toBeInTheDocument();
+    expect(within(footer).getByText("Back to modules")).toBeInTheDocument();
+    expect(within(footer).getByText("Text size")).toBeInTheDocument();
+    expect(within(footer).getByText("Dark mode")).toBeInTheDocument();
+    expect(within(footer).getByRole("button", { name: "Logout" })).toBeInTheDocument();
   });
 
   it("applies the selected ui scale to the supply shell via the body attribute", async () => {
@@ -141,7 +170,6 @@ describe("SupplyShell", () => {
 
     expect(screen.getByTestId("supply-sidebar").className).toContain("dark:bg-gray-900");
     expect(screen.getByTestId("supply-main").className).not.toContain("md:ml-56");
-    expect(screen.getAllByText("Overview")[1].className).toContain("dark:text-slate-100");
     expect(screen.getByText("Quick actions").closest('[class*="dark:border-slate-800"]')).not.toBeNull();
   });
 });

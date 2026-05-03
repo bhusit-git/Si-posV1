@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
-import type { DrizzleDB } from "@/db";
+import { getDbForFactory, getFactories, type DrizzleDB } from "@/db";
 import { supplyItems, supplyRequestItems, supplyRequests } from "@/db/schema";
 import { requireManagerUp } from "@/lib/api-auth";
 import { withErrorHandler } from "@/lib/api-utils";
@@ -13,6 +13,7 @@ import {
   parseOptionalString,
   resolveSupplyReadContext,
   resolveSupplyWriteContext,
+  validateSupplyRequestTargetFactoryKey,
 } from "@/lib/supply/route-helpers";
 import {
   convertToBaseQuantity,
@@ -62,7 +63,7 @@ function isMissingUsersRelationError(error: unknown): boolean {
 
 function normalizeRequestItems(items: unknown) {
   if (!Array.isArray(items) || items.length === 0) {
-    return { items: null, error: null as string | null };
+    return { items: [] as SupplyRequestInputItem[], error: null as string | null };
   }
 
   const normalized: SupplyRequestInputItem[] = [];
@@ -74,17 +75,17 @@ function normalizeRequestItems(items: unknown) {
 
     if (!supplyItemId) continue;
     if (quantity == null) {
-      return { items: null, error: "กรุณาระบุจำนวนเต็มที่ถูกต้อง" };
+      return { items: [] as SupplyRequestInputItem[], error: "กรุณาระบุจำนวนเต็มที่ถูกต้อง" };
     }
     if (!quantityUnit) {
-      return { items: null, error: "หน่วยจำนวนไม่ถูกต้อง" };
+      return { items: [] as SupplyRequestInputItem[], error: "หน่วยจำนวนไม่ถูกต้อง" };
     }
     if (quantity <= 0) continue;
 
     normalized.push({ supplyItemId, quantity, quantityUnit, note });
   }
 
-  return { items: normalized.length > 0 ? normalized : null, error: null as string | null };
+  return { items: normalized, error: null as string | null };
 }
 
 async function loadSupplyItemsByIds(db: DrizzleDB, ids: number[]) {
@@ -175,6 +176,55 @@ async function loadRequests(db: DrizzleDB, factoryKey: string, status: string | 
 
   return findMany({
     where: status ? and(eq(supplyRequests.factoryKey, factoryKey), eq(supplyRequests.status, status as never)) : eq(supplyRequests.factoryKey, factoryKey),
+    with: {
+      items: true,
+    },
+    orderBy: [desc(supplyRequests.updatedAt), desc(supplyRequests.id)],
+  });
+}
+
+async function loadIncomingCrossFactoryRequests(
+  db: DrizzleDB,
+  requesterFactoryKey: string,
+  sourceFactoryKey: string,
+  status: string | null
+) {
+  if (status === "draft") {
+    return [];
+  }
+
+  const filters = [
+    eq(supplyRequests.factoryKey, requesterFactoryKey),
+    eq(supplyRequests.requestType, "cross_factory"),
+    eq(supplyRequests.targetFactoryKey, sourceFactoryKey),
+  ];
+  if (status) {
+    filters.push(eq(supplyRequests.status, status as never));
+  } else {
+    filters.push(eq(supplyRequests.status, "pending"));
+  }
+  const where = filters.length === 1 ? filters[0] : and(...filters);
+
+  const findMany = db.query?.supplyRequests?.findMany;
+  if (!findMany) {
+    const rows = await db
+      .select()
+      .from(supplyRequests)
+      .where(where)
+      .orderBy(desc(supplyRequests.updatedAt), desc(supplyRequests.id));
+    if (rows.length === 0) return [];
+
+    const items = await db
+      .select()
+      .from(supplyRequestItems)
+      .where(inArray(supplyRequestItems.requestId, rows.map((row) => row.id)))
+      .orderBy(asc(supplyRequestItems.id));
+
+    return appendItems(rows, await attachSupplyItemDetails(db, items));
+  }
+
+  return findMany({
+    where,
     with: {
       items: true,
     },
@@ -277,11 +327,41 @@ export const GET = withErrorHandler(async function GET(request: NextRequest) {
   }
 
   const requestRefs = await loadRequestRefMap(context.db, context.factoryKey);
+  const externalRows = [];
+  const externalRequestRefs = new Map<string, string | null>();
+
+  for (const factory of getFactories().filter((factory) => factory.key !== context.factoryKey)) {
+    const factoryDb = getDbForFactory(factory.key);
+    try {
+      const incomingRows = await loadIncomingCrossFactoryRequests(
+        factoryDb,
+        factory.key,
+        context.factoryKey,
+        status
+      );
+      if (incomingRows.length === 0) continue;
+
+      const refs = await loadRequestRefMap(factoryDb, factory.key);
+      for (const row of incomingRows) {
+        externalRequestRefs.set(`${row.factoryKey}:${row.id}`, refs.get(row.id) || null);
+      }
+      externalRows.push(...incomingRows);
+    } catch (error) {
+      if (!isMissingSupplyRequestTableError(error)) throw error;
+    }
+  }
+
   return NextResponse.json(
-    rows.map((row) => ({
-      ...row,
-      requestRef: requestRefs.get(row.id) || null,
-    }))
+    [
+      ...rows.map((row) => ({
+        ...row,
+        requestRef: requestRefs.get(row.id) || null,
+      })),
+      ...externalRows.map((row) => ({
+        ...row,
+        requestRef: externalRequestRefs.get(`${row.factoryKey}:${row.id}`) || null,
+      })),
+    ]
   );
 });
 
@@ -300,26 +380,33 @@ export const POST = withErrorHandler(async function POST(request: NextRequest) {
   const note = parseOptionalString(body?.note);
   const normalizedRequestItems = normalizeRequestItems(body?.items);
   const items = normalizedRequestItems.items;
+  const isDraft = requestedStatus === "draft";
 
   if (!REQUEST_TYPES.has(requestType)) return badRequest("ประเภทใบเบิกไม่ถูกต้อง");
   if (!REQUEST_STATUSES.has(requestedStatus)) {
     return badRequest("สถานะใบเบิกเริ่มต้นไม่ถูกต้อง");
   }
-  if (requestType === "cross_factory" && !targetFactoryKey) {
-    return badRequest("กรุณาเลือกโรงงานต้นทางสำหรับการเบิกข้ามโรงงาน");
+  const targetFactoryValidation = validateSupplyRequestTargetFactoryKey(
+    requestType,
+    targetFactoryKey,
+    { allowEmpty: isDraft }
+  );
+  if (targetFactoryValidation.error) {
+    return badRequest(targetFactoryValidation.error);
+  }
+  if (requestType === "cross_factory" && targetFactoryValidation.targetFactoryKey === context.factoryKey) {
+    return badRequest("โรงงานต้นทางและโรงงานผู้ขอต้องไม่ซ้ำกัน");
   }
   if (normalizedRequestItems.error) {
     return badRequest(normalizedRequestItems.error);
   }
-  if (!items) return badRequest("กรุณาระบุรายการเบิกอย่างน้อย 1 รายการ");
-  if (!requesterName) return badRequest("กรุณาระบุผู้ขอใช้จริง");
+  if (!isDraft && items.length === 0) return badRequest("กรุณาระบุรายการเบิกอย่างน้อย 1 รายการ");
+  if (!isDraft && !requesterName) return badRequest("กรุณาระบุผู้ขอใช้จริง");
 
-  const supplyItemRows = await loadSupplyItemsByIds(
-    context.db,
-    Array.from(new Set(items.map((item) => item.supplyItemId)))
-  );
+  const supplyItemIds = Array.from(new Set(items.map((item) => item.supplyItemId)));
+  const supplyItemRows = await loadSupplyItemsByIds(context.db, supplyItemIds);
   const supplyItemById = new Map(supplyItemRows.map((item) => [item.id, item]));
-  if (supplyItemById.size !== new Set(items.map((item) => item.supplyItemId)).size) {
+  if (supplyItemById.size !== supplyItemIds.length) {
     return badRequest("พบรายการของใช้ที่ไม่ถูกต้อง");
   }
 
@@ -345,7 +432,7 @@ export const POST = withErrorHandler(async function POST(request: NextRequest) {
       .values({
         factoryKey: context.factoryKey,
         requestType: requestType as "internal_factory" | "cross_factory",
-        targetFactoryKey,
+        targetFactoryKey: targetFactoryValidation.targetFactoryKey,
         requesterName,
         createdBy: auth.user.id,
         status: requestedStatus,
@@ -354,15 +441,17 @@ export const POST = withErrorHandler(async function POST(request: NextRequest) {
       })
       .returning();
 
-    await tx.insert(supplyRequestItems).values(
-      normalizedItems.map((item) => ({
-        requestId: requestRow.id,
-        supplyItemId: item.supplyItemId,
-        quantityRequested: item.quantityBase,
-        quantityApproved: null,
-        note: item.note,
-      }))
-    );
+    if (normalizedItems.length > 0) {
+      await tx.insert(supplyRequestItems).values(
+        normalizedItems.map((item) => ({
+          requestId: requestRow.id,
+          supplyItemId: item.supplyItemId,
+          quantityRequested: item.quantityBase,
+          quantityApproved: null,
+          note: item.note,
+        }))
+      );
+    }
 
     return requestRow;
   });
@@ -378,7 +467,7 @@ export const POST = withErrorHandler(async function POST(request: NextRequest) {
         factoryKey: context.factoryKey,
         requestType,
         status: requestedStatus,
-        targetFactoryKey,
+        targetFactoryKey: targetFactoryValidation.targetFactoryKey,
         requesterName,
         note,
         itemCount: normalizedItems.length,

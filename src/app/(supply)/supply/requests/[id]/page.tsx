@@ -1,7 +1,7 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { SupplyPageHeader } from "@/components/supply/shell";
@@ -45,14 +45,19 @@ interface RequestDetail {
 export default function SupplyRequestDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [detail, setDetail] = useState<RequestDetail | null>(null);
   const [signature, setSignature] = useState("");
   const [rejectNote, setRejectNote] = useState("");
   const [quantities, setQuantities] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState(false);
+  const requestFactoryKey = searchParams.get("factoryKey")?.trim() || "";
+  const requestQuery = requestFactoryKey
+    ? `?factoryKey=${encodeURIComponent(requestFactoryKey)}`
+    : "";
 
-  async function load() {
-    const response = await fetch(`/api/supply/requests/${params.id}`);
+  const load = useCallback(async () => {
+    const response = await fetch(`/api/supply/requests/${params.id}${requestQuery}`);
     if (!response.ok) throw new Error("โหลดใบเบิกไม่สำเร็จ");
     const data = await response.json();
     setDetail(data);
@@ -65,16 +70,16 @@ export default function SupplyRequestDetailPage() {
         ])
       )
     );
-  }
+  }, [params.id, requestQuery]);
 
   useEffect(() => {
     load().catch(() => toast.error("โหลดใบเบิกไม่สำเร็จ"));
-  }, [params.id]);
+  }, [load]);
 
   async function runAction(action: string, extra?: Record<string, unknown>) {
     setSaving(true);
     try {
-      const response = await fetch(`/api/supply/requests/${params.id}`, {
+      const response = await fetch(`/api/supply/requests/${params.id}${requestQuery}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, ...extra }),
@@ -96,6 +101,11 @@ export default function SupplyRequestDetailPage() {
     return <div className="p-6 text-sm text-slate-500">กำลังโหลดใบเบิก...</div>;
   }
 
+  const sourceFactoryKey =
+    detail.requestType === "cross_factory"
+      ? detail.targetFactoryKey
+      : detail.targetFactoryKey || detail.factoryKey;
+
   return (
     <div>
       <SupplyPageHeader
@@ -115,7 +125,7 @@ export default function SupplyRequestDetailPage() {
               <Meta label="สถานะ" value={detail.status} badge />
               <Meta label="ผู้ขอใช้จริง" value={detail.requesterName || "-"} />
               <Meta label="โรงงานเอกสาร" value={detail.factoryKey} />
-              <Meta label="โรงงานต้นทาง" value={detail.targetFactoryKey || "-"} />
+              <Meta label="โรงงานต้นทาง" value={sourceFactoryKey || "-"} />
             </div>
             <div className="rounded-2xl border border-slate-100">
               <Table>

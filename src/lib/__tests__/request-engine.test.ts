@@ -5,12 +5,30 @@ vi.mock("@/lib/supply/stock-engine", () => ({
   writeStockLedger: vi.fn(),
 }));
 
+vi.mock("@/lib/supply/route-helpers", () => ({
+  validateSupplyRequestTargetFactoryKey: vi.fn((requestType: string, targetFactoryKey: string | null, options?: { allowEmpty?: boolean }) => {
+    if (requestType !== "cross_factory") {
+      return { targetFactoryKey: null, error: null };
+    }
+    if (!targetFactoryKey) {
+      return options?.allowEmpty
+        ? { targetFactoryKey: null, error: null }
+        : { targetFactoryKey: null, error: "กรุณาเลือกโรงงานต้นทางสำหรับการเบิกข้ามโรงงาน" };
+    }
+    if (targetFactoryKey === "bearng") {
+      return { targetFactoryKey: null, error: "โรงงานต้นทางไม่ถูกต้อง" };
+    }
+    return { targetFactoryKey, error: null };
+  }),
+}));
+
 import { supplyRequestItems, supplyRequests } from "@/db/schema";
 import {
   approveRequest,
   fulfillRequest,
   rejectRequest,
   submitRequest,
+  updateDraftRequest,
 } from "@/lib/supply/request-engine";
 import {
   checkStockSufficiency,
@@ -77,6 +95,24 @@ function createRequestDb(
         throw new Error("Unexpected select table");
       }),
     })),
+    delete: vi.fn((table) => {
+      if (table === supplyRequestItems) {
+        return {
+          where: vi.fn().mockResolvedValue(undefined),
+        };
+      }
+
+      throw new Error("Unexpected delete table");
+    }),
+    insert: vi.fn((table) => {
+      if (table === supplyRequestItems) {
+        return {
+          values: vi.fn().mockResolvedValue(undefined),
+        };
+      }
+
+      throw new Error("Unexpected insert table");
+    }),
     update: vi.fn((table) => {
       if (table === supplyRequestItems) {
         return {
@@ -118,12 +154,78 @@ describe("request-engine", () => {
 
   it("submitRequest transitions draft to pending", async () => {
     const request = buildRequest({ status: "draft" });
-    const db = createRequestDb(request);
+    const db = createRequestDb(request, [buildRequestItem()]);
 
     const result = await submitRequest(db as never, request.id, { id: 7 });
 
     expect(result.status).toBe("pending");
     expect(db.transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("submitRequest rejects incomplete drafts", async () => {
+    const request = buildRequest({ status: "draft", requesterName: null });
+    const db = createRequestDb(request, [buildRequestItem()]);
+
+    await expect(submitRequest(db as never, request.id, { id: 7 })).rejects.toThrow(
+      "กรุณาระบุผู้ขอใช้จริงก่อนส่งอนุมัติ"
+    );
+  });
+
+  it("submitRequest rejects cross-factory drafts with invalid target factory", async () => {
+    const request = buildRequest({
+      status: "draft",
+      requestType: "cross_factory",
+      targetFactoryKey: "bearng",
+    });
+    const db = createRequestDb(request, [buildRequestItem()]);
+
+    await expect(submitRequest(db as never, request.id, { id: 7 })).rejects.toThrow(
+      "โรงงานต้นทางไม่ถูกต้อง"
+    );
+  });
+
+  it("updateDraftRequest replaces header fields and items", async () => {
+    const request = buildRequest({ status: "draft", requesterName: "แผนกผลิต" });
+    const db = createRequestDb(request, [buildRequestItem()]);
+
+    const result = await updateDraftRequest(db as never, request.id, {
+      requestType: "internal_factory",
+      targetFactoryKey: null,
+      requesterName: "ทีมแพ็กกิ้ง",
+      note: "ขอไว้ก่อนส่งอนุมัติ",
+      items: [
+        {
+          supplyItemId: 8,
+          quantityRequested: 24,
+          note: "แบบแพ็ค",
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      status: "draft",
+      requestType: "internal_factory",
+      targetFactoryKey: null,
+      requesterName: "ทีมแพ็กกิ้ง",
+      note: "ขอไว้ก่อนส่งอนุมัติ",
+    });
+    expect(db.tx.delete).toHaveBeenCalledTimes(1);
+    expect(db.tx.insert).toHaveBeenCalledTimes(1);
+  });
+
+  it("updateDraftRequest rejects invalid cross-factory target keys", async () => {
+    const request = buildRequest({ status: "draft" });
+    const db = createRequestDb(request, [buildRequestItem()]);
+
+    await expect(
+      updateDraftRequest(db as never, request.id, {
+        requestType: "cross_factory",
+        targetFactoryKey: "bearng",
+        requesterName: "ทีมแพ็กกิ้ง",
+        note: null,
+        items: [],
+      })
+    ).rejects.toThrow("โรงงานต้นทางไม่ถูกต้อง");
   });
 
   it("approveRequest stores signature without moving stock yet", async () => {
@@ -197,6 +299,36 @@ describe("request-engine", () => {
     ).rejects.toThrow("Insufficient supply stock for approval");
 
     expect(writeStockLedger).not.toHaveBeenCalled();
+  });
+
+  it("approveRequest checks cross-factory stock against the source factory database", async () => {
+    const request = buildRequest({
+      status: "pending",
+      requestType: "cross_factory",
+      targetFactoryKey: "bearing",
+    });
+    const items = [buildRequestItem({ id: 1001, supplyItemId: 3, quantityRequested: 5 })];
+    const db = createRequestDb(request, items);
+    const sourceStockDb = { select: vi.fn() };
+
+    vi.mocked(checkStockSufficiency).mockResolvedValue({
+      sufficient: true,
+      shortfalls: [],
+    });
+
+    const result = await approveRequest(
+      db as never,
+      request.id,
+      { id: 9 },
+      [{ requestItemId: 1001, quantity: 5 }],
+      "pin",
+      { stockDb: sourceStockDb as never }
+    );
+
+    expect(result.status).toBe("approved");
+    expect(checkStockSufficiency).toHaveBeenCalledWith(sourceStockDb, "bearing", [
+      { supplyItemId: 3, quantity: 5 },
+    ]);
   });
 
   it("rejectRequest transitions pending to rejected and appends note", async () => {

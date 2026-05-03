@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Search, ShoppingCart, Truck } from "lucide-react";
 import { toast } from "sonner";
 
@@ -55,6 +55,26 @@ interface CartItem {
   quantityBase: number;
 }
 
+interface RequestDraftDetail {
+  id: number;
+  status: string;
+  requestType: "internal_factory" | "cross_factory";
+  targetFactoryKey: string | null;
+  requesterName: string | null;
+  note: string | null;
+  items: Array<{
+    id: number;
+    supplyItemId: number;
+    quantityRequested: number;
+    supplyItem: {
+      id: number;
+      name: string;
+      unit: string;
+      packSize: number;
+    } | null;
+  }>;
+}
+
 function clampQuantity(value: number, max: number) {
   return Math.max(0, Math.min(Math.trunc(value), max));
 }
@@ -81,10 +101,40 @@ function getInitialQuantityUnit(row: StockBalanceRow): SupplyQuantityUnit {
   return "base";
 }
 
+function buildCartFromDraft(
+  detail: RequestDraftDetail,
+  stockRows: StockBalanceRow[]
+): CartItem[] {
+  const stockByItemId = new Map(stockRows.map((row) => [row.item.id, row]));
+  const cartItems: CartItem[] = [];
+
+  for (const item of detail.items) {
+    const stockRow = stockByItemId.get(item.supplyItemId);
+    const supplyItem = stockRow?.item || item.supplyItem;
+    if (!supplyItem) continue;
+
+    const availableBase = Math.max(stockRow?.balance ?? 0, item.quantityRequested);
+    cartItems.push({
+      supplyItemId: item.supplyItemId,
+      name: supplyItem.name,
+      unit: supplyItem.unit,
+      packSize: supplyItem.packSize,
+      availableBase,
+      quantity: item.quantityRequested,
+      quantityUnit: "base",
+      quantityBase: item.quantityRequested,
+    });
+  }
+
+  return cartItems;
+}
+
 export default function NewSupplyRequestPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [rows, setRows] = useState<StockBalanceRow[]>([]);
   const [factories, setFactories] = useState<Array<{ key: string; name: string }>>([]);
   const [currentFactoryKey, setCurrentFactoryKey] = useState("");
@@ -97,14 +147,28 @@ export default function NewSupplyRequestPage() {
   const [targetFactoryKey, setTargetFactoryKey] = useState("");
   const [requesterName, setRequesterName] = useState("");
   const [note, setNote] = useState("");
+  const draftId = searchParams.get("draftId");
+  const requestFactoryKey = searchParams.get("factoryKey")?.trim() || "";
+  const isEditingDraft = typeof draftId === "string" && draftId.trim().length > 0;
+  const requestQuery = requestFactoryKey
+    ? `?factoryKey=${encodeURIComponent(requestFactoryKey)}`
+    : "";
+  const ownerFactoryKey = requestFactoryKey || currentFactoryKey;
+  const detailHref = (requestId: number) =>
+    `/supply/requests/${requestId}${ownerFactoryKey ? `?factoryKey=${encodeURIComponent(ownerFactoryKey)}` : ""}`;
 
   useEffect(() => {
     startTransition(() => {
       void (async () => {
         try {
-          const [stockResponse, factoryResponse] = await Promise.all([
+          const requests = [
             fetch("/api/supply/stock"),
             fetch("/api/factory"),
+          ] as const;
+
+          const [stockResponse, factoryResponse, draftResponse] = await Promise.all([
+            ...requests,
+            isEditingDraft ? fetch(`/api/supply/requests/${draftId}${requestQuery}`) : Promise.resolve(null),
           ]);
 
           if (!stockResponse.ok) {
@@ -116,15 +180,44 @@ export default function NewSupplyRequestPage() {
 
           const stock = (await stockResponse.json()) as StockBalanceRow[];
           const factoryData = (await factoryResponse.json()) as FactoryResponse;
+          const draft = draftResponse
+            ? ((await draftResponse.json()) as RequestDraftDetail)
+            : null;
+
+          if (draftResponse && !draftResponse.ok) {
+            throw new Error("โหลด draft สำหรับแก้ไขไม่สำเร็จ");
+          }
+          if (draft && draft.status !== "draft") {
+            throw new Error("แก้ไขได้เฉพาะใบเบิกสถานะ draft");
+          }
+
           setRows(Array.isArray(stock) ? stock : []);
           setFactories(Array.isArray(factoryData.factories) ? factoryData.factories : []);
           setCurrentFactoryKey(factoryData.current || "");
+          if (draft) {
+            setRequestType(draft.requestType);
+            setTargetFactoryKey(draft.targetFactoryKey || "");
+            setRequesterName(draft.requesterName || "");
+            setNote(draft.note || "");
+            setCart(buildCartFromDraft(draft, Array.isArray(stock) ? stock : []));
+          } else {
+            setRequestType("internal_factory");
+            setTargetFactoryKey("");
+            setRequesterName("");
+            setNote("");
+            setCart([]);
+          }
         } catch (error) {
           toast.error(error instanceof Error ? error.message : "โหลดข้อมูลไม่สำเร็จ");
+          if (isEditingDraft) {
+            router.push("/supply/requests");
+          }
+        } finally {
+          setIsBootstrapping(false);
         }
       })();
     });
-  }, []);
+  }, [draftId, isEditingDraft, requestQuery, router, startTransition]);
 
   const categories = useMemo(() => {
     const names = Array.from(
@@ -152,10 +245,17 @@ export default function NewSupplyRequestPage() {
     [cart]
   );
 
+  const canSaveDraft =
+    isEditingDraft ||
+    cart.length > 0 ||
+    requesterName.trim().length > 0 ||
+    note.trim().length > 0 ||
+    requestType === "cross_factory" ||
+    targetFactoryKey.trim().length > 0;
+
   const canSubmit =
     cart.length > 0 &&
     requesterName.trim().length > 0 &&
-    note.trim().length > 0 &&
     (requestType === "internal_factory" || targetFactoryKey.trim().length > 0);
 
   function updateCart(row: StockBalanceRow, nextQuantity: number) {
@@ -210,35 +310,84 @@ export default function NewSupplyRequestPage() {
     return cart.find((item) => item.supplyItemId === supplyItemId) || null;
   }
 
+  async function requestJson<T>(input: string, init: RequestInit): Promise<T> {
+    const response = await fetch(input, init);
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.error || "บันทึกข้อมูลไม่สำเร็จ");
+    }
+    return (await response.json()) as T;
+  }
+
+  function buildPayload(status?: "draft" | "pending") {
+    return {
+      ...(status ? { status } : {}),
+      requestType,
+      targetFactoryKey: requestType === "cross_factory" ? targetFactoryKey : null,
+      requesterName: requesterName.trim() || null,
+      note: note.trim() || null,
+      items: cart.map((item) => ({
+        supplyItemId: item.supplyItemId,
+        quantity: item.quantity,
+        quantityUnit: item.quantityUnit,
+      })),
+    };
+  }
+
+  async function saveDraft() {
+    if (!canSaveDraft || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const data = isEditingDraft
+        ? await requestJson<RequestDraftDetail>(`/api/supply/requests/${draftId}${requestQuery}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(buildPayload()),
+          })
+        : await requestJson<RequestDraftDetail>("/api/supply/requests", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(buildPayload("draft")),
+          });
+
+      toast.success("บันทึกร่างเรียบร้อยแล้ว");
+      router.push(detailHref(data.id));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "บันทึกร่างไม่สำเร็จ");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function submitRequest() {
     if (!canSubmit || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/supply/requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: "pending",
-          requestType,
-          targetFactoryKey: requestType === "cross_factory" ? targetFactoryKey : null,
-          requesterName,
-          note,
-          items: cart.map((item) => ({
-            supplyItemId: item.supplyItemId,
-            quantity: item.quantity,
-            quantityUnit: item.quantityUnit,
-          })),
-        }),
-      });
+      let submitted: RequestDraftDetail;
 
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || "ส่งคำขอไม่สำเร็จ");
+      if (isEditingDraft) {
+        await requestJson<RequestDraftDetail>(`/api/supply/requests/${draftId}${requestQuery}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildPayload()),
+        });
+        submitted = await requestJson<RequestDraftDetail>(`/api/supply/requests/${draftId}${requestQuery}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "submit" }),
+        });
+      } else {
+        submitted = await requestJson<RequestDraftDetail>("/api/supply/requests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildPayload("pending")),
+        });
       }
 
       toast.success("ส่งใบเบิกเรียบร้อยแล้ว");
-      router.push("/supply/requests");
+      router.push(detailHref(submitted.id));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "ส่งคำขอไม่สำเร็จ");
     } finally {
@@ -246,11 +395,19 @@ export default function NewSupplyRequestPage() {
     }
   }
 
+  if (isBootstrapping) {
+    return <div className="p-6 text-sm text-slate-500">กำลังโหลดแบบฟอร์มใบเบิก...</div>;
+  }
+
   return (
     <div>
       <SupplyPageHeader
-        title="สร้างใบเบิกใหม่"
-        description="เลือกของจาก catalog แล้วสรุปเป็นใบเบิกเดียว จากนั้นส่งเข้า status pending ได้ทันที"
+        title={isEditingDraft ? "แก้ไข draft ใบเบิก" : "สร้างใบเบิกใหม่"}
+        description={
+          isEditingDraft
+            ? "แก้ไขรายการใน draft ต่อได้ บันทึกร่างไว้ก่อน หรือส่งอนุมัติเมื่อข้อมูลครบ"
+            : "เลือกของจาก catalog แล้วบันทึกร่างไว้ก่อน หรือส่งเข้า status pending ได้ทันที"
+        }
         actions={
           <Button asChild variant="outline" className="rounded-full">
             <Link href="/supply/requests">กลับรายการใบเบิก</Link>
@@ -429,7 +586,7 @@ export default function NewSupplyRequestPage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <CardTitle>สรุปรายการเบิก</CardTitle>
-                <CardDescription>ตรวจรายการก่อนส่งเป็นใบเบิก pending</CardDescription>
+                <CardDescription>ตรวจรายการก่อนบันทึกร่างหรือส่งอนุมัติ</CardDescription>
               </div>
               <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-800">
                 <ShoppingCart className="size-5" />
@@ -638,13 +795,24 @@ export default function NewSupplyRequestPage() {
               />
             </div>
 
-            <Button
-              className="w-full rounded-2xl"
-              disabled={!canSubmit || isPending || isSubmitting}
-              onClick={() => void submitRequest()}
-            >
-              {isSubmitting ? "กำลังส่งคำขอ..." : isPending ? "กำลังโหลด..." : "ส่งคำขอ"}
-            </Button>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full rounded-2xl"
+                disabled={!canSaveDraft || isPending || isSubmitting}
+                onClick={() => void saveDraft()}
+              >
+                {isSubmitting ? "กำลังบันทึก..." : "บันทึกร่าง"}
+              </Button>
+              <Button
+                className="w-full rounded-2xl"
+                disabled={!canSubmit || isPending || isSubmitting}
+                onClick={() => void submitRequest()}
+              >
+                {isSubmitting ? "กำลังส่งคำขอ..." : isPending ? "กำลังโหลด..." : "ส่งอนุมัติ"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

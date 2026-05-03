@@ -9,6 +9,10 @@ export interface SupplyRouteContext {
   db: DrizzleDB;
 }
 
+interface SupplyTargetFactoryValidationOptions {
+  allowEmpty?: boolean;
+}
+
 export function parsePositiveInt(value: unknown): number | null {
   if (typeof value === "number" && Number.isInteger(value) && value > 0) return value;
   if (typeof value === "string" && value.trim().length > 0) {
@@ -44,6 +48,44 @@ export function parseBooleanFlag(value: string | null): boolean {
 
 export function ensureFactoryKey(factoryKey: string): string | null {
   return getFactories().some((factory) => factory.key === factoryKey) ? factoryKey : null;
+}
+
+export function validateSupplyRequestTargetFactoryKey(
+  requestType: string,
+  targetFactoryKey: string | null,
+  options: SupplyTargetFactoryValidationOptions = {}
+) {
+  if (requestType !== "cross_factory") {
+    return {
+      targetFactoryKey: null,
+      error: null as string | null,
+    };
+  }
+
+  if (!targetFactoryKey) {
+    return options.allowEmpty
+      ? {
+          targetFactoryKey: null,
+          error: null as string | null,
+        }
+      : {
+          targetFactoryKey: null,
+          error: "กรุณาเลือกโรงงานต้นทางสำหรับการเบิกข้ามโรงงาน",
+        };
+  }
+
+  const validTargetFactoryKey = ensureFactoryKey(targetFactoryKey);
+  if (!validTargetFactoryKey) {
+    return {
+      targetFactoryKey: null,
+      error: "โรงงานต้นทางไม่ถูกต้อง",
+    };
+  }
+
+  return {
+    targetFactoryKey: validTargetFactoryKey,
+    error: null as string | null,
+  };
 }
 
 export function resolveSupplyReadContext(

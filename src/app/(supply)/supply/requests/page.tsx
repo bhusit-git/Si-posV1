@@ -35,6 +35,14 @@ function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
+function getRequestHref(row: SupplyRequestRow) {
+  return `/supply/requests/${row.id}?factoryKey=${encodeURIComponent(row.factoryKey)}`;
+}
+
+function getDraftEditHref(row: SupplyRequestRow) {
+  return `/supply/requests/new?draftId=${row.id}&factoryKey=${encodeURIComponent(row.factoryKey)}`;
+}
+
 async function readErrorMessage(response: Response, fallback: string) {
   const body = await response.json().catch(() => null);
   const payload = parseApiErrorResponse(body);
@@ -47,6 +55,7 @@ export default function SupplyRequestsPage() {
   const [rows, setRows] = useState<SupplyRequestRow[]>([]);
   const [status, setStatus] = useState<(typeof statuses)[number]>("pending");
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionId, setActionId] = useState<number | null>(null);
 
   const load = useCallback(async (nextStatus: (typeof statuses)[number]) => {
     const response = await fetch(`/api/supply/requests?status=${nextStatus}`);
@@ -72,6 +81,31 @@ export default function SupplyRequestsPage() {
       window.clearTimeout(timer);
     };
   }, [load, status]);
+
+  async function runDraftAction(row: SupplyRequestRow, action: "submit" | "cancel") {
+    const requestHref = `/api/supply/requests/${row.id}?factoryKey=${encodeURIComponent(row.factoryKey)}`;
+    setActionId(row.id);
+    try {
+      const response = await fetch(requestHref, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, `ทำรายการ ${action} ไม่สำเร็จ`));
+      }
+
+      toast.success(action === "submit" ? "ส่ง draft เข้าอนุมัติแล้ว" : "ยกเลิก draft แล้ว");
+      await load(status);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "ทำรายการไม่สำเร็จ";
+      toast.error(action === "submit" ? "ส่ง draft ไม่สำเร็จ" : "ยกเลิก draft ไม่สำเร็จ", {
+        description: message,
+      });
+    } finally {
+      setActionId(null);
+    }
+  }
 
   return (
     <div>
@@ -119,18 +153,49 @@ export default function SupplyRequestsPage() {
                 <TableHead>ปลายทาง/ต้นทาง</TableHead>
                 <TableHead>สถานะ</TableHead>
                 <TableHead>สร้างเมื่อ</TableHead>
+                <TableHead>จัดการ</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((row) => (
                 <TableRow key={row.id} className="cursor-pointer hover:bg-slate-50">
-                  <TableCell><Link href={`/supply/requests/${row.id}`} className="font-medium text-slate-900">{row.requestRef || formatSupplyRequestRef(row.createdAt, row.id)}</Link></TableCell>
+                  <TableCell><Link href={getRequestHref(row)} className="font-medium text-slate-900">{row.requestRef || formatSupplyRequestRef(row.createdAt, row.id)}</Link></TableCell>
                   <TableCell>{row.requestType === "cross_factory" ? "ข้ามโรงงาน" : "ในโรงงาน"}</TableCell>
                   <TableCell>{row.requesterName || "-"}</TableCell>
                   <TableCell>{row.items.length} รายการ</TableCell>
                   <TableCell>{row.targetFactoryKey || row.factoryKey}</TableCell>
                   <TableCell><Badge variant="outline">{row.status}</Badge></TableCell>
                   <TableCell>{new Date(row.createdAt).toLocaleString("th-TH")}</TableCell>
+                  <TableCell>
+                    {row.status === "draft" ? (
+                      <div className="flex flex-wrap gap-2">
+                        <Button asChild size="sm" variant="outline" className="h-8 rounded-full px-3">
+                          <Link href={getDraftEditHref(row)}>แก้ไข</Link>
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-8 rounded-full px-3"
+                          disabled={actionId === row.id}
+                          onClick={() => void runDraftAction(row, "submit")}
+                        >
+                          ส่งอนุมัติ
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 rounded-full px-3 text-rose-700"
+                          disabled={actionId === row.id}
+                          onClick={() => void runDraftAction(row, "cancel")}
+                        >
+                          ยกเลิก
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button asChild size="sm" variant="ghost" className="h-8 rounded-full px-3">
+                        <Link href={getRequestHref(row)}>เปิดดู</Link>
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

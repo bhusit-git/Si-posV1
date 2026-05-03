@@ -17,6 +17,7 @@ import {
   parseApiErrorResponse,
 } from "@/lib/api-error-diagnostics";
 import {
+  calculateProjectedBaseBalance,
   formatBaseQuantityWithPack,
   formatPackUnitLabel,
   hasPackUnit,
@@ -117,8 +118,13 @@ export default function SupplyStockPage() {
     if (!selectedItem) return 0;
     return form.type === "adjustment"
       ? parsedQuantity
-      : selectedItem.balance + parsedQuantity;
-  }, [form.type, parsedQuantity, selectedItem]);
+      : calculateProjectedBaseBalance(
+          selectedItem.balance,
+          parsedQuantity,
+          form.quantityUnit,
+          selectedItem.item.packSize
+        );
+  }, [form.quantityUnit, form.type, parsedQuantity, selectedItem]);
 
   function openAdjustDialogForItem(row: StockBalanceRow, type: "purchase_in" | "adjustment") {
     setForm((current) => ({

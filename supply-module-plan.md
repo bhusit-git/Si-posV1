@@ -8,11 +8,19 @@
 ```
 Si-posV1 Mini ERP
 ├── [✓] Module 1: POS     — ขายน้ำแข็ง, invoice, bag tracking
-└── [ ] Module 2: Supply  — เบิกของใช้, ส่งของระหว่างโรงงาน, stock
+└── [~] Module 2: Supply  — เบิกของใช้, ส่งของระหว่างโรงงาน, stock
     (Module 3+: TBD)
 ```
 
 > **หลักการ:** Supply module ไม่แตะ POS code เลย ยกเว้น 3 จุดที่ระบุชัดใน Phase 4 และทำแบบ additive เท่านั้น
+
+### Implementation Status Legend
+
+- `[✓]` พบ implementation ในโค้ดแล้ว
+- `[~]` มีบางส่วนแล้ว แต่ยังไม่ครบตาม spec ในแผน
+- `[ ]` ยังไม่พบ implementation ชัดเจน
+
+> อัปเดตสถานะล่าสุดจากโค้ดใน repo: **2026-05-02**
 
 ---
 
@@ -248,6 +256,15 @@ src/
 
 ## Phase 0 — Schema & Migration
 **1-2 วัน | ต้องทำก่อนทุกอย่าง**
+
+### Status Snapshot
+
+- `[✓]` มี schema หลักของ `supply_items`, `supply_stock_thresholds`, `supply_stock_ledger`, `supply_requests`, `supply_request_items`, `supply_transfers`, `supply_transfer_items`
+- `[✓]` มี enum หลักของ stock/request/transfer และ relations ของ item/request/transfer ใน `src/shared/db/schema/supply.ts`
+- `[~]` schema ขยายเพิ่มของจริงนอกแผนแล้ว เช่น `itemCode`, `brand`, `model`, `packSize`, `borrowLimit`, `supply_catalog_settings`
+- `[ ]` `supply_borrow_status`, `supply_borrows`, `supply_borrow_items` ยังไม่พบใน schema
+- `[ ]` fields ตามแผนอย่าง `reasonCode`, `metadata`, `attachments` ของ request/transfer ยังไม่อยู่ใน schema ปัจจุบัน
+- `[ ]` deliverable `npm run db:push` ผ่านครบทั้ง 3 factory DB ยังไม่ได้ยืนยันในไฟล์นี้
 
 เพิ่มต่อท้าย `src/shared/db/schema/index.ts`
 
@@ -562,6 +579,15 @@ export const supplyTransfersRelations = relations(supplyTransfers, ({ one, many 
 ## Phase 1 — Stock Engine
 **2-3 วัน | ต้องเสร็จก่อน API**
 
+### Status Snapshot
+
+- `[✓]` `src/lib/supply/stock-engine.ts` มี `getStockBalance`, `getStockBalances`, `writeStockLedger`, `checkStockSufficiency`
+- `[✓]` `src/lib/supply/request-engine.ts` มี `submitRequest`, `approveRequest`, `rejectRequest`, `fulfillRequest`, `cancelRequest`
+- `[✓]` `src/lib/supply/transfer-engine.ts` มี `createTransfer`, `receiveTransfer`, `rejectTransfer`
+- `[✓]` มี unit tests ของ engine หลักใน `src/lib/__tests__/stock-engine.test.ts`, `request-engine.test.ts`, `transfer-engine.test.ts`
+- `[~]` test coverage มีแล้ว แต่ยังไม่ครบทุกเคสที่ลิสต์ไว้ในแผน
+- `[ ]` durable borrow / return engine ยังไม่พบ
+
 ### `src/lib/supply/stock-engine.ts`
 
 ```typescript
@@ -698,6 +724,17 @@ transfer-engine.test.ts
 
 ## Phase 2 — API Routes
 **2-3 วัน**
+
+### Status Snapshot
+
+- `[✓]` มี route หลักของ `items`, `stock`, `requests`, `transfers`
+- `[✓]` มี `GET /api/supply/transfers/stuck`
+- `[✓]` route เขียนหลักมี audit log สำหรับ action สำคัญแล้ว
+- `[~]` `GET /api/supply/items` ใช้งานได้ แต่ยังไม่ครบ spec เรื่อง `activeOnly=true` และ `currentStock` aggregate ต่อรายการ
+- `[~]` `GET/POST /api/supply/requests/[id]` ทำ action flow หลักได้แล้ว แต่ยังไม่มี `PUT /api/supply/requests/[id]` สำหรับแก้ draft
+- `[ ]` `POST /api/supply/transfers/stuck/[id]` สำหรับ `retry` / `cancel` ยังไม่พบ
+- `[ ]` routes กลุ่ม `borrows` ยังไม่พบ
+- `[ ]` contract ของ `reasonCode`, `metadata`, `attachments` ใน request/transfer API ยังไม่ครบตามแผน
 
 ทุก route ใช้ pattern เดิมของโปรเจกต์:
 
@@ -844,6 +881,19 @@ supply.transfer.reject
 
 ## Phase 3 — UI
 **3-5 วัน**
+
+### Status Snapshot
+
+- `[✓]` มี layout/shell/sidebar แยกของ Supply ใน `src/app/(supply)/layout.tsx` และ `src/components/supply/shell.tsx`
+- `[✓]` มีหน้า `Overview`, `Stock`, `Requests`, `Request Detail`, `Transfers`, `Transfer Detail`, `Items`
+- `[✓]` หน้า `requests/new` ใช้งาน catalog + cart + submit request ได้จริง
+- `[~]` request creation flow มี cart panel ด้านขวาแล้ว แต่ยังไม่ใช่ floating cart + drawer ตาม spec
+- `[~]` request detail ทำ submit/approve/reject/fulfil/cancel ได้แล้ว แต่ draft edit flow ยังไม่ครบ
+- `[ ]` ปุ่ม `บันทึกร่าง` จากหน้า `requests/new` ยังไม่พบ
+- `[ ]` UI สำหรับ `reasonCode`, `metadata`, `attachments` ยังไม่พบ
+- `[ ]` UI ของ `borrows` ยังไม่พบ
+- `[ ]` stuck transfer warning banner + inspect/retry/cancel flow ยังไม่พบใน UI
+- `[ ]` draft quick actions ใน list page (`แก้ไข`, `ส่งอนุมัติ`, `ยกเลิก`) ยังไม่ครบตามแผน
 
 ### Layout แยก (`src/app/(supply)/layout.tsx`)
 
@@ -996,6 +1046,13 @@ interface RequisitionCartStore {
 ## Phase 4 — Integration
 **1 วัน | แตะ POS code 3 จุดเท่านั้น**
 
+### Status Snapshot
+
+- `[✓]` หน้าถุง (`(dashboard)/bags/page.tsx`) มีปุ่ม `นำเข้า Supply Stock` แบบ manual แล้ว
+- `[~]` มีทางเข้า Supply ผ่านหน้า `src/app/modules/page.tsx` แล้ว แต่ยังไม่ใช่ integration แบบ nav section ใน `(dashboard)/layout.tsx` ตามแผนเดิม
+- `[ ]` `SupplyAlertWidget` component มีอยู่ แต่ยังไม่พบการ mount เข้าที่ `(dashboard)/dashboard/page.tsx`
+- `[ ]` nav section ของ Supply ใน main dashboard sidebar ยังไม่พบ
+
 ### จุดที่ 1 — Main Sidebar (`(dashboard)/layout.tsx`)
 
 เพิ่ม section ใหม่ใน nav ไม่แก้ของเดิม:
@@ -1045,6 +1102,15 @@ interface RequisitionCartStore {
 
 ## Phase 5 — Hardening
 **1-2 วัน | ก่อน release**
+
+### Status Snapshot
+
+- `[✓]` มี endpoint สำหรับ list stuck transfer (`GET /api/supply/transfers/stuck`)
+- `[ ]` idempotency สำหรับ `supply.request.approve` และ `supply.transfer.receive` ยังไม่พบการใช้งานจริงใน route
+- `[ ]` low stock notification ตอน load `(supply)/layout.tsx` ยังไม่พบ
+- `[ ]` stuck transfer resolve flow (`retry` / `cancel`) ยังไม่พบ
+- `[ ]` overdue borrow detection / borrow hardening ยังไม่พบ
+- `[ ]` migrate action `supply.seed-items` ยังไม่พบ
 
 ### Idempotency
 
@@ -1130,6 +1196,13 @@ action: "supply.seed-items"
 
 ## Phase 6 — Durable Borrow / Return + Advanced Request UX
 **3-5 วัน | หลัง request/transfer flow หลักนิ่งแล้ว**
+
+### Status Snapshot
+
+- `[~]` durable item ถูกใส่ไว้ใน catalog/model แล้ว (`itemType`, `borrowLimit`) แต่ workflow จริงยังไม่มา
+- `[ ]` draft editing flow แบบครบวงจรยังไม่เสร็จ
+- `[ ]` request/transfer metadata + attachment references ยังไม่เสร็จ
+- `[ ]` borrow/return workflow, overdue tracking, partial return, receiver signature ยังไม่พบ
 
 ### Scope
 
